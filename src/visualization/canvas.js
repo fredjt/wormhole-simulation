@@ -1,7 +1,7 @@
 function setupCanvas(id){const canvas=document.getElementById(id);const dpr=window.devicePixelRatio||1;function resize(){const rect=canvas.parentElement.getBoundingClientRect();canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;canvas.style.width=rect.width+'px';canvas.style.height=rect.height+'px';}resize();window.addEventListener('resize',resize);return{canvas,ctx:canvas.getContext('2d'),dpr};}
 const potObj=setupCanvas('potCanvas');const timeObj=setupCanvas('timeCanvas');const phaseObj=setupCanvas('phaseCanvasEl');
 
-function drawGraph(ctx,w,h,drawFn){ctx.save();ctx.scale(window.devicePixelRatio||1,window.devicePixelRatio||1);ctx.clearRect(0,0,w,h);drawFn(ctx,w,h);ctx.restore();}
+function drawGraph(ctx,w,h,drawFn){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,w,h);drawFn(ctx,w,h);ctx.restore();}
 
 function drawPotentialGraph(){
   const{canvas,ctx}=potObj;const w=canvas.width/(window.devicePixelRatio||1),h=canvas.height/(window.devicePixelRatio||1);
@@ -47,7 +47,7 @@ function drawPhaseSpace(){
     c.strokeStyle='#6090e0';c.lineWidth=2;c.beginPath();for(let i=0;i<phaseHistory.length;i++){const x=toX(phaseHistory[i].a),y=toY(phaseHistory[i].v);i===0?c.moveTo(x,y):c.lineTo(x,y);}c.stroke();
     if(calibrated){c.fillStyle='#fff';c.beginPath();c.arc(toX(a0_val),toY(0),4,0,Math.PI*2);c.fill();}
     c.fillStyle='#ffaa40';c.beginPath();c.arc(toX(a_current),toY(v_current),5,0,Math.PI*2);c.fill();
-    c.fillStyle='#7070a0';c.font='11px sans-serif';c.textAlign='center';c.fillText('a',cw/2,ch-5);c.save();c.translate(12,ch/2);c.rotate(-Math.PI/2);c.fillText('δ/dτ',0,0);c.restore();
+    c.fillStyle='#7070a0';c.font='11px sans-serif';c.textAlign='center';c.fillText('a',cw/2,ch-5);c.save();c.translate(12,ch/2);c.rotate(-Math.PI/2);c.fillText('δa/δτ',0,0);c.restore();
   });
 }
 
