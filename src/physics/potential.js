@@ -1,11 +1,11 @@
-function effPot(a,a0,s0,model,params){const f=lapseF(a,M_val,beta_val,mu_val);const s=computeSigmaFromEOS(a,a0,s0,model,params);return f-4*PI*PI*a*a*s*s;}
+function effPot(a,a0,s0,model,params){const f=lapseF(a,M_val,beta_val,mu_val);const s=computeSigmaFromEOS(a,a0,s0,model,params);return f-4*Math.PI*Math.PI*a*a*s*s;}
 function effPotPrime(a,a0,s0,model,params){const h=1e-6;return(effPot(a+h,a0,s0,model,params)-effPot(a-h,a0,s0,model,params))/(2*h);}
 function effPotD2(a,a0,s0,model,params){const h=1e-5;return(effPot(a+h,a0,s0,model,params)-2*effPot(a,a0,s0,model,params)+effPot(a-h,a0,s0,model,params))/(h*h);}
 
 function calibrateOmega(a0,M,beta,mu){const f=lapseF(a0,M,beta,mu);if(f<=0)return NaN;return(-lapseFPrime(a0,M,beta,mu)*a0-2*f)/(4*f);}
 function calibratePhantomParams(a0,M,beta,mu){const f=lapseF(a0,M,beta,mu);if(f<=0)return NaN;const fp=lapseFPrime(a0,M,beta,mu),w=(-fp*a0/(2*f))/2-1;if(Math.abs(2+w)<1e-10)return NaN;return-w/(2+w);}
-function calibrateChaplyginParams(a0,M,beta,mu){const f=lapseF(a0,M,beta,mu);if(f<=0)return NaN;const s0=-Math.sqrt(f)/(2*PI*a0);let bestAc=1,bestErr=1e9;for(let Ac=-5;Ac<=20;Ac+=0.1){const Vp=Math.abs(effPotPrime(a0,a0,s0,'chaplygin',{Ac,alpha_c:0.5}));if(Vp<bestErr){bestErr=Vp;bestAc=Ac;}}return bestAc;}
-function calibrateCosmicChap(a0,M,beta,mu){const f=lapseF(a0,M,beta,mu);if(f<=0)return NaN;const s0=-Math.sqrt(f)/(2*PI*a0);let bestAgc=1,bestErr=1e9;for(let Agc=-5;Agc<=20;Agc+=0.1){const Vp=Math.abs(effPotPrime(a0,a0,s0,'cosmicChap',{Agc,n_gc:2}));if(Vp<bestErr){bestErr=Vp;bestAgc=Agc;}}return bestAgc;}
-function calibrateModCosmicChap(a0,M,beta,mu){const f=lapseF(a0,M,beta,mu);if(f<=0)return NaN;const s0=-Math.sqrt(f)/(2*PI*a0);let bestAmcc=1,bestErr=1e9;for(let Amcc=-5;Amcc<=20;Amcc+=0.1){const Vp=Math.abs(effPotPrime(a0,a0,s0,'modCosmicChap',{Amcc,m_mcc:2}));if(Vp<bestErr){bestErr=Vp;bestAmcc=Amcc;}}return bestAmcc;}
+function calibrateChaplyginParams(a0,M,beta,mu){const f=lapseF(a0,M,beta,mu);if(f<=0)return NaN;const s0=-Math.sqrt(f)/(2*Math.PI*a0);let bestAc=1,bestErr=1e9;for(let Ac=-5;Ac<=20;Ac+=0.1){const Vp=Math.abs(effPotPrime(a0,a0,s0,'chaplygin',{Ac,alpha_c:0.5}));if(Vp<bestErr){bestErr=Vp;bestAc=Ac;}}return bestAc;}
+function calibrateCosmicChap(a0,M,beta,mu){const f=lapseF(a0,M,beta,mu);if(f<=0)return NaN;const s0=-Math.sqrt(f)/(2*Math.PI*a0);let bestAgc=1,bestErr=1e9;for(let Agc=-5;Agc<=20;Agc+=0.1){const Vp=Math.abs(effPotPrime(a0,a0,s0,'cosmicChap',{Agc,n_gc:2}));if(Vp<bestErr){bestErr=Vp;bestAgc=Agc;}}return bestAgc;}
+function calibrateModCosmicChap(a0,M,beta,mu){const f=lapseF(a0,M,beta,mu);if(f<=0)return NaN;const s0=-Math.sqrt(f)/(2*Math.PI*a0);let bestAmcc=1,bestErr=1e9;for(let Amcc=-5;Amcc<=20;Amcc+=0.1){const Vp=Math.abs(effPotPrime(a0,a0,s0,'modCosmicChap',{Amcc,m_mcc:2}));if(Vp<bestErr){bestErr=Vp;bestAmcc=Amcc;}}return bestAmcc;}
 
 export { effPot, effPotPrime, effPotD2, calibrateOmega, calibratePhantomParams, calibrateChaplyginParams, calibrateCosmicChap, calibrateModCosmicChap };
