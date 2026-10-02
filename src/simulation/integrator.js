@@ -30,6 +30,7 @@ function mainLoop(timestamp) {
     const dtSub = dtSim / subSteps;
     for (let i = 0; i < subSteps; i++) rk4Step(dtSub);
   }
+  console.log('mainLoop: threeFailed=',threeFailed,'renderer=',!!renderer,'a_current=',a_current);
   if (!threeFailed && renderer) {
     resizeThreeJS();
     updateShellVisualization(a_current);

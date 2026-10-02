@@ -26,6 +26,8 @@ function initThreeJS(){
       renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
       renderer.setPixelRatio(window.devicePixelRatio);
       container.appendChild(renderer.domElement);
+    console.log('WebGL context:', renderer.domElement.getContext('webgl'));
+    console.log('Renderer info:', renderer.info);
       
       scene.add(new THREE.AmbientLight(0x404060,0.5));
       const dir=new THREE.DirectionalLight(0xffffff,0.8);
