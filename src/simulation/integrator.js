@@ -22,7 +22,6 @@ function rk4Step(dt) {
 
 
 function mainLoop(timestamp) {
-  console.log('mainLoop: simRunning=',simRunning,'calibrated=',calibrated,'timeHistory.len=',timeHistory.length);
   const dtReal = Math.min((timestamp - lastTime) / 1000, 0.05);
   lastTime = timestamp;
   if (simRunning && !simPaused) {

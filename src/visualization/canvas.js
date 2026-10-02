@@ -2,7 +2,6 @@ function setupCanvas(id){const canvas=document.getElementById(id);const dpr=wind
 const potObj=setupCanvas('potCanvas');const timeObj=setupCanvas('timeCanvas');const phaseObj=setupCanvas('phaseCanvasEl');
 
 function drawGraph(ctx,w,h,drawFn){
-  console.log('drawGraph: w=',w,'h=',h);
   ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,w,h);drawFn(ctx,w,h);ctx.restore();}
 
 function drawPotentialGraph(){
@@ -26,7 +25,6 @@ function drawPotentialGraph(){
 }
 
 function drawTimeSeries(){
-  console.log('drawTimeSeries: len=',timeHistory.length,'a0=',a0_val);
   const{canvas,ctx}=timeObj;const w=canvas.width/(window.devicePixelRatio||1),h=canvas.height/(window.devicePixelRatio||1);
   drawGraph(ctx,w,h,(c,cw,ch)=>{
     const pad={l:50,r:20,t:15,b:25},gw=cw-pad.l-pad.r,gh=ch-pad.t-pad.b;
