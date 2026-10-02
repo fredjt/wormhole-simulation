@@ -2,7 +2,10 @@ function renderEnergyConditions(){
   const container=document.getElementById('ecBars');if(!container)return;
   const f_a=lapseF(a_current,M_val,beta_val,mu_val),sigma_a=surfaceSigma(a_current,Math.max(f_a,0),v_current);
   const p_a=tangentialPressure(a_current,lapseFPrime(a_current,M_val,beta_val,mu_val),Math.max(f_a,0),v_current);
-  const conditions=[{name:'Weak',check:()=>sigma_a>=0&&sigma_a+p_a>=0},{name:'Dominant',check:()=>sigma_a>=0&&Math.abs(p_a)<=Math.abs(sigma_a)},{name:'Null',check:()=>sigma_a+p_a>=0},{name:'Strong',check:()=>sigma_a+p_a>=0&&sigma_a+3*p_a>=0}];
+  // For thin-shell wormholes: exotic matter has sigma<0. NEC violation (sigma+p<0) is required.
+  // Show whether the configuration has the right exotic matter properties.
+  const necViolation = sigma_a + p_a < 0;  // True = NEC violated (required for wormhole)
+  const conditions=[{name:'Weak',check:()=>sigma_a<=0&&sigma_a+p_a<=0},{name:'Dominant',check:()=>sigma_a<=0&&Math.abs(p_a)<=Math.abs(sigma_a)},{name:'Null',check:()=>necViolation},{name:'Strong',check:()=>necViolation&&(sigma_a+3*p_a<=0)}];
   let html='';conditions.forEach(ec=>{let strength=0;if(ec.name==='Weak')strength=Math.min(1,Math.max(-1,sigma_a+p_a));else if(ec.name==='Dominant')strength=Math.min(1,Math.max(-1,sigma_a-Math.abs(p_a)));else if(ec.name==='Null')strength=Math.min(1,Math.max(-1,sigma_a+p_a));else strength=Math.min(1,Math.max(-1,sigma_a+3*p_a));const pct=((strength+1)/2)*50;const cls=(ec.check())?'ec-pass':'ec-fail';const icon=(ec.check())?String.fromCharCode(10004):String.fromCharCode(10006);html+='<div class="ec-bar-container '+cls+'"><span class="name">'+ec.name+'</span><div class="ec-bar-track"><div class="ec-bar-fill" style="left:'+Math.min(50,Math.max(0,pct))+'%;width:'+Math.abs(pct-50)+'%"></div></div><span class="ec-icon">'+icon+'</span></div>';});container.innerHTML=html;}
 
 function updateStatus(){

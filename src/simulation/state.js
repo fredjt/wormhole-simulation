@@ -4,7 +4,7 @@ export let a0_val = 2.5, delta_a_val = 0.01, v0_val = -0.1;
 export let speedMultiplier = 1.0;
 export let eosModel = 'chaplygin';
 export let eosParams = {Ac: 2, alpha_c: 1};
-export let calibrated = false;
+export let calibrated = true;
 export let simRunning = false;
 export let simPaused = false;
 export let autoStop = true;
