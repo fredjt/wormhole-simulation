@@ -24,22 +24,8 @@ Object.assign(window, canvas);
 Object.assign(window, rendering);
 Object.assign(window, ui);
 
-// Global simulation state (currently shared across modules)
-let M_val = 1.0, beta_val = 0.0, mu_val = 1.0;
-let a0_val = 2.5, delta_a_val = 0.01, v0_val = -0.1;
-let speedMultiplier = 1.0;
-let eosModel = 'barotropic';
-let params = {};
-let calibrated = false;
-let simRunning = false;
-let simPaused = false;
-
-// Current simulation state
-let a_current = 2.5, v_current = -0.1;
-let timeHistory = [];
-let aHistory = [];
-let vHistory = [];
-const maxHistory = 2000;
+// Global simulation state is exported from state.js and exposed via Object.assign(window, state)
+// See src/simulation/state.js for all declarations
 
 function init() {
   threejs.initThreeJS();
