@@ -31,10 +31,10 @@ function mainLoop(timestamp) {
     for (let i = 0; i < subSteps; i++) rk4Step(dtSub);
   }
   console.log('mainLoop: threeFailed=',threeFailed,'renderer=',!!renderer,'a_current=',a_current);
-  if (!threeFailed && renderer) {
+  const r = threejs.renderer; const tf = threejs.threeFailed; if (!tf && r) {
     resizeThreeJS();
     updateShellVisualization(a_current);
-    renderer.render(scene, camera);
+    r.render(G.scene, G.camera);
   }
   drawPotentialGraph();
   drawTimeSeries();
