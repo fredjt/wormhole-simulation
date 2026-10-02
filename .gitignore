@@ -25,3 +25,4 @@ Thumbs.db
 config/
 .local/
 .config/
+.unsloth_attachments/
