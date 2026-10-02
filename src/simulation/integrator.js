@@ -30,11 +30,10 @@ function mainLoop(timestamp) {
     const dtSub = dtSim / subSteps;
     for (let i = 0; i < subSteps; i++) rk4Step(dtSub);
   }
-  console.log('mainLoop: threeFailed=',threeFailed,'renderer=',!!renderer,'a_current=',a_current);
-  const r = threejs.renderer; const tf = threejs.threeFailed; if (!tf && r) {
+  if (!G.threeFailed && G.renderer) {
     resizeThreeJS();
     updateShellVisualization(a_current);
-    r.render(G.scene, G.camera);
+    G.renderer.render(G.scene, G.camera);
   }
   drawPotentialGraph();
   drawTimeSeries();
