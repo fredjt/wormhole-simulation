@@ -1,3 +1,7 @@
+export let scene, camera, renderer, shellMesh, horizonMesh;
+export let threeFailed = false;
+
+
 function initThreeJS(){
   try{
     if(typeof THREE==='undefined'){throw new Error('Three.js not loaded');}
