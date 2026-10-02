@@ -31,7 +31,7 @@ function init() {
   threejs.initThreeJS();
   
   // Wire up all slider inputs
-  ['sliderM','sliderBeta','sliderMu','sliderA0','sliderDeltaA','sliderV0','sliderSpeed'].forEach(id => {
+  ['sliderM','sliderA','sliderR0','sliderA0','sliderDeltaA','sliderV0','sliderSpeed'].forEach(id => {
     document.getElementById(id).addEventListener('input', () => {
       ui.readParams();
       ui.updateHorizonInfo();
