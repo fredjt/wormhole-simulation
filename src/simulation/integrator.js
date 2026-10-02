@@ -13,7 +13,7 @@ function rk4Step(dt) {
   a_current+=(k1[0]+2*k2[0]+2*k3[0]+k4[0])*dt/6;
   v_current+=(k1[1]+2*k2[1]+2*k3[1]+k4[1])*dt/6;
   tau+=dt;
-  timeHistory.push({tau:a_current,v:v_current});
+  timeHistory.push({tau:tau,a:a_current,v:v_current});
   phaseHistory.push({a:a_current,v:v_current});
   if(timeHistory.length>2000)timeHistory.shift();
   if(phaseHistory.length>2000)phaseHistory.shift();
