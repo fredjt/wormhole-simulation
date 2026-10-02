@@ -25,7 +25,9 @@ function initThreeJS(){
     for(let i=0;i<8;i++){const ang=(i/8)*Math.PI*2;const pts=[];for(let r=0.3;r<=6;r+=0.1)pts.push(new THREE.Vector3(r*Math.cos(ang),r*Math.sin(ang),0));scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x2a2a4a,transparent:true,opacity:0.3})));}
     for(let i=0;i<8;i++){const ang=(i/8)*Math.PI*2+Math.PI/8;const pts=[];for(let r=0.3;r<=6;r+=0.1)pts.push(new THREE.Vector3(r*Math.cos(ang),r*Math.sin(ang),0));scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x2a2a4a,transparent:true,opacity:0.3})));}
     for(let r=1;r<=5;r++){const rg=new THREE.RingGeometry(r-0.01,r+0.01,64);const rm=new THREE.MeshBasicMaterial({color:0x3a3a5a,side:THREE.DoubleSide,transparent:true,opacity:0.2});const ring=new THREE.Mesh(rg,rm);ring.rotation.x=-Math.PI/2;ring.position.y=-0.5;scene.add(ring);}
-    resizeThreeJS();window.addEventListener('resize',resizeThreeJS);
+    resizeThreeJS();
+    setTimeout(resizeThreeJS, 100);
+    window.addEventListener('resize', resizeThreeJS);
   }catch(e){
     threeFailed=true;
     console.error('Three.js init failed:',e);

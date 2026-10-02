@@ -33,6 +33,7 @@ function mainLoop(timestamp) {
     for (let i = 0; i < subSteps; i++) rk4Step(dtSub);
   }
   if (!threeFailed && renderer) {
+    resizeThreeJS();
     updateShellVisualization(a_current);
     renderer.render(scene, camera);
   }
