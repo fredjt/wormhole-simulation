@@ -24,6 +24,7 @@ function rk4Step(dt) {
 let lastTime = 0;
 
 function mainLoop(timestamp) {
+  console.log('mainLoop called, timestamp=', timestamp, 'threeFailed=', threeFailed, 'renderer=', !!renderer);
   const dtReal = Math.min((timestamp - lastTime) / 1000, 0.05);
   lastTime = timestamp;
   if (simRunning && !simPaused) {

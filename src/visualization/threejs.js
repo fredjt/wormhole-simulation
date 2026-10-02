@@ -4,12 +4,16 @@ export let threeFailed = false;
 
 function initThreeJS(){
   try{
+    console.log('initThreeJS: starting...');
     if(typeof THREE==='undefined'){throw new Error('Three.js not loaded');}
+    console.log('THREE version:', THREE.REVISION);
     const container=document.getElementById('threeContainer');
     scene=new THREE.Scene();scene.background=new THREE.Color(0x0a0a18);
     camera=new THREE.PerspectiveCamera(50,1,0.1,100);camera.position.set(3,2,4);camera.lookAt(0,0,0);
     renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
     container.appendChild(renderer.domElement);
+    console.log('Renderer canvas:', renderer.domElement, 'size:', renderer.domElement.width, 'x', renderer.domElement.height);
+    console.log('Container size:', container.clientWidth, 'x', container.clientHeight);
     scene.add(new THREE.AmbientLight(0x404060,0.5));
     const dir=new THREE.DirectionalLight(0xffffff,0.8);dir.position.set(3,5,4);scene.add(dir);
     const pt=new THREE.PointLight(0x4060ff,0.5,10);pt.position.set(-2,-1,-2);scene.add(pt);
@@ -41,7 +45,8 @@ function resizeThreeJS(){
 }
 
 function updateShellVisualization(a){
-  if(threeFailed||!shellMesh)return;
+  if(threeFailed||!shellMesh){console.log('updateShellVisualization: skipping, threeFailed=',threeFailed,'shellMesh=',!!shellMesh);return;}
+  console.log('updateShellVisualization: a=',a,'scale=',Math.max(a,0.1));
   const scale=Math.max(a,0.1);shellMesh.scale.set(scale,scale,scale);
   const f_a=lapseF(a,M_val,beta_val,mu_val);
   const sigma_a=surfaceSigma(a,Math.max(f_a,0),v_current);
