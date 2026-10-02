@@ -30,7 +30,7 @@ function drawTimeSeries(){
   const{canvas,ctx}=timeObj;const w=canvas.width/(window.devicePixelRatio||1),h=canvas.height/(window.devicePixelRatio||1);
   drawGraph(ctx,w,h,(c,cw,ch)=>{
     const pad={l:50,r:20,t:15,b:25},gw=cw-pad.l-pad.r,gh=ch-pad.t-pad.b;
-    if(timeHistory.length<2)return;let aMin=1e9,aMax=-1e9;timeHistory.forEach(p=>{aMin=Math.min(aMin,p.a);aMax=Math.max(aMax,p.a);});aMin=Math.min(aMin,a0_val)*0.9;aMax=Math.max(aMax,a0_val)*1.1;const tauMin=timeHistory[0].tau,tauMax=timeHistory[timeHistory.length-1].tau,tauRange=tauMax-tauMin||1;
+    if(timeHistory.length<1)return;let aMin=1e9,aMax=-1e9;timeHistory.forEach(p=>{aMin=Math.min(aMin,p.a);aMax=Math.max(aMax,p.a);});aMin=Math.min(aMin,a0_val)*0.9;aMax=Math.max(aMax,a0_val)*1.1;const tauMin=timeHistory[0].tau,tauMax=timeHistory[timeHistory.length-1].tau,tauRange=tauMax-tauMin||1;
     function toX(t){return pad.l+(t-tauMin)/tauRange*gw;}function toY(a){return pad.t+gh-(a-aMin)/(aMax-aMin)*gh;}
     c.strokeStyle='#1a1a30';c.lineWidth=1;for(let a=Math.ceil(aMin);a<=Math.floor(aMax);a++){c.beginPath();c.moveTo(pad.l,toY(a));c.lineTo(cw-pad.r,toY(a));c.stroke();}
     c.strokeStyle='#ffffff40';c.lineWidth=1;c.setLineDash([3,3]);c.beginPath();c.moveTo(pad.l,toY(a0_val));c.lineTo(cw-pad.r,toY(a0_val));c.stroke();c.setLineDash([]);
@@ -43,7 +43,7 @@ function drawPhaseSpace(){
   const{canvas,ctx}=phaseObj;const w=canvas.width/(window.devicePixelRatio||1),h=canvas.height/(window.devicePixelRatio||1);
   drawGraph(ctx,w,h,(c,cw,ch)=>{
     const pad={l:50,r:15,t:15,b:30},gw=cw-pad.l-pad.r,gh=ch-pad.t-pad.b;
-    if(phaseHistory.length<2)return;let aMin=1e9,aMax=-1e9,vMin=1e9,vMax=-1e9;phaseHistory.forEach(p=>{aMin=Math.min(aMin,p.a);aMax=Math.max(aMax,p.a);vMin=Math.min(vMin,p.v);vMax=Math.max(vMax,p.v);});const aPad=(aMax-aMin)*0.15||0.3,vPad=(vMax-vMin)*0.15||0.3;aMin-=aPad;aMax+=aPad;vMin-=vPad;vMax+=vPad;
+    if(phaseHistory.length<1)return;let aMin=1e9,aMax=-1e9,vMin=1e9,vMax=-1e9;phaseHistory.forEach(p=>{aMin=Math.min(aMin,p.a);aMax=Math.max(aMax,p.a);vMin=Math.min(vMin,p.v);vMax=Math.max(vMax,p.v);});const aPad=(aMax-aMin)*0.15||0.3,vPad=(vMax-vMin)*0.15||0.3;aMin-=aPad;aMax+=aPad;vMin-=vPad;vMax+=vPad;
     function toX(a){return pad.l+(a-aMin)/(aMax-aMin)*gw;}function toY(v){return pad.t+gh-(v-vMin)/(vMax-vMin)*gh;}
     c.strokeStyle='#1a1a30';c.lineWidth=1;for(let a=Math.ceil(aMin);a<=Math.floor(aMax);a++){c.beginPath();c.moveTo(toX(a),pad.t);c.lineTo(toX(a),ch-pad.b);c.stroke();}for(let v=Math.ceil(vMin);v<=Math.floor(vMax);v+=0.5){c.beginPath();c.moveTo(pad.l,toY(v));c.lineTo(cw-pad.r,toY(v));c.stroke();}
     c.strokeStyle='#3a3a5a';c.lineWidth=1;c.beginPath();c.moveTo(pad.l,toY(0));c.lineTo(cw-pad.r,toY(0));c.stroke();c.beginPath();c.moveTo(toX(0),pad.t);c.lineTo(toX(0),ch-pad.b);c.stroke();
