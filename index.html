@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Thin-Shell Wormhole Dynamics</title>
+
+
+
+    <!-- Three.js loaded via CDN (external, not bundled) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<link rel="stylesheet" href="./css/style.css">
+    <script type="module" src="./src/main.js"></script>
+</head>
+<body>
+
+<div id="controls">
+  <h2>Seed Metric</h2>
+  <div class="control-group">
+    <div class="slider-row"><label>M (mass) <span class="val" id="valM">1.00</span></label><input type="range" id="sliderM" min="0.3" max="5.0" step="0.01" value="1.0"></div>
+    <div class="slider-row"><label>&beta; (string cloud) <span class="val" id="valBeta">0.30</span></label><input type="range" id="sliderBeta" min="0.0" max="1.0" step="0.01" value="0.3"></div>
+    <div class="slider-row"><label>&mu; (regulator) <span class="val" id="valMu">0.50</span></label><input type="range" id="sliderMu" min="0.01" max="2.0" step="0.01" value="0.5"></div>
+    <div class="info-text" id="horizonInfo">Horizon r<sub>+</sub>: &mdash;</div>
+  </div>
+
+  <h2>Throat Placement</h2>
+  <div class="control-group">
+    <div class="slider-row"><label>a<sub>0</sub> (throat radius) <span class="val" id="valA0">1.50</span></label><input type="range" id="sliderA0" min="0.5" max="5.0" step="0.01" value="1.5"></div>
+    <div class="warning" id="horizonWarn">&#9888; Throat must be outside the horizon.</div>
+  </div>
+
+  <h2>Fluid Model</h2>
+  <div class="control-group">
+    <select id="eosSelect"><option value="barotropic">Linear Barotropic</option><option value="phantom">Variable Phantom</option><option value="chaplygin">Variable Chaplygin</option><option value="cosmicChap">Generalized Cosmic Chaplygin</option><option value="modCosmicChap">Modified Cosmic Chaplygin</option></select>
+    <div id="eosParams"></div>
+    <button id="btnCalibrate" style="background:#3a5a8a;color:#fff;font-size:12px;padding:6px;">Calibrate at a<sub>0</sub></button>
+  </div>
+
+  <h2>Perturbation</h2>
+  <div class="control-group">
+    <div class="slider-row"><label>&delta;a (displacement) <span class="val" id="valDeltaA">5.0%</span></label><input type="range" id="sliderDeltaA" min="-10" max="10" step="0.5" value="5"></div>
+    <div class="slider-row"><label>v<sub>&tau;</sub> (initial velocity) <span class="val" id="valV0">0.00</span></label><input type="range" id="sliderV0" min="-2" max="2" step="0.05" value="0"></div>
+    <div class="toggle-row"><input type="checkbox" id="chkSmallPerturb"><label for="chkSmallPerturb">Small perturbation (linear regime)</label></div>
+  </div>
+
+  <h2>Playback</h2>
+  <div class="control-group">
+    <div class="btn-row"><button id="btnPlay">&#9654; Play</button><button id="btnPause">&#9208; Pause</button><button id="btnReset">&#8634; Reset</button></div>
+    <div class="slider-row"><label>Speed <span class="val" id="valSpeed">5.0&times;</span></label><input type="range" id="sliderSpeed" min="0.1" max="50" step="0.1" value="5"></div>
+    <div class="toggle-row"><input type="checkbox" id="chkAutoStop" checked><label for="chkAutoStop">Auto-stop on collapse or bounce</label></div>
+  </div>
+
+  <h2>About</h2>
+  <div class="info-text">Simulates radial dynamics of a thin-shell wormhole throat from a regularized Letelier&ndash;Alencar string-cloud black hole. Based on arXiv:2610.00131 (Zhong et al., 2026).</div>
+</div>
+
+<div id="main">
+  <div id="potentialGraph"><canvas id="potCanvas"></canvas></div>
+  <div id="threeContainer"></div>
+  <div id="timeSeriesGraph"><canvas id="timeCanvas"></canvas></div>
+</div>
+
+<div id="status">
+  <div id="phaseCanvas"><canvas id="phaseCanvasEl"></canvas></div>
+  <div id="statusContent">
+    <div class="status-section"><h3>Stability</h3><span class="stability-badge" id="stabBadge">&mdash;</span>
+      <div class="readout"><span class="label">V&#8242;&#8242;(a<sub>0</sub>)</span><span class="value" id="valVpp">&mdash;</span></div>
+      <div class="readout"><span class="label">Freq. (if stable)</span><span class="value" id="valFreq">&mdash;</span></div>
+    </div>
+    <div class="status-section"><h3>Current State</h3>
+      <div class="readout"><span class="label">Radius a(&tau;)</span><span class="value" id="valA">&mdash;</span></div>
+      <div class="readout"><span class="label">Delta from eq.</span><span class="value" id="valADelta">&mdash;</span></div>
+      <div class="readout"><span class="label">Velocity &da;(&tau;)</span><span class="value" id="valV">&mdash;</span></div>
+    </div>
+    <div class="status-section"><h3>Surface Properties</h3>
+      <div class="readout"><span class="label">&sigma;(a)</span><span class="value" id="valSigma">&mdash;</span></div>
+      <div class="readout"><span class="label">Pressure p(a)</span><span class="value" id="valP">&mdash;</span></div>
+    </div>
+    <div class="status-section"><h3>Energy Conditions</h3><div id="ecBars"></div></div>
+    <div class="status-section"><h3>Active Model</h3>
+      <div class="readout"><span class="label">Fluid</span><span class="value" id="valModel">&mdash;</span></div>
+      <div id="modelParams"></div>
+    </div>
+  </div>
+</div>
+

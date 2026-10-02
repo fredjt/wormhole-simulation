@@ -1,0 +1,46 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0d0d1a; color: #c8c8e0; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; height: 100vh; display: flex; }
+  #controls { width: 290px; min-width: 290px; background: #13132a; border-right: 1px solid #2a2a4a; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+  #controls h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: #7a7aaa; margin-bottom: 4px; border-bottom: 1px solid #2a2a4a; padding-bottom: 6px; }
+  .control-group { display: flex; flex-direction: column; gap: 8px; }
+  .slider-row { display: flex; flex-direction: column; gap: 2px; }
+  .slider-row label { font-size: 12px; color: #9090b8; display: flex; justify-content: space-between; }
+  .slider-row label span.val { color: #a0d0ff; font-weight: 600; }
+  input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 3px; background: #2a2a4a; outline: none; cursor: pointer; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #5080d0; cursor: pointer; border: 2px solid #3060a0; }
+  input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #5080d0; cursor: pointer; border: 2px solid #3060a0; }
+  select { background: #1e1e3a; color: #c0c0e0; border: 1px solid #3a3a5a; border-radius: 4px; padding: 6px 8px; font-size: 13px; cursor: pointer; }
+  .btn-row { display: flex; gap: 6px; }
+  button { flex: 1; padding: 8px; border: none; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+  #btnPlay { background: #2a7a4a; color: #fff; } #btnPlay:hover { background: #3a9a5a; }
+  #btnPause { background: #7a6a2a; color: #fff; } #btnPause:hover { background: #9a8a3a; }
+  #btnReset { background: #6a2a2a; color: #fff; } #btnReset:hover { background: #8a3a3a; }
+  .toggle-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #9090b8; }
+  .toggle-row input[type="checkbox"] { accent-color: #5080d0; }
+  .warning { background: #3a1a1a; border: 1px solid #6a2a2a; color: #e08080; padding: 8px; border-radius: 4px; font-size: 11px; display: none; }
+  .info-text { font-size: 11px; color: #7070a0; line-height: 1.5; }
+  #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #potentialGraph { height: 220px; background: #0f0f20; border-bottom: 1px solid #2a2a4a; position: relative; }
+  #potentialGraph canvas { width: 100%; height: 100%; display: block; }
+  #threeContainer { flex: 1; min-height: 300px; background: #0a0a18; position: relative; }
+  #timeSeriesGraph { height: 140px; background: #0f0f20; border-top: 1px solid #2a2a4a; }
+  #timeSeriesGraph canvas { width: 100%; height: 100%; display: block; }
+  #status { width: 300px; min-width: 300px; background: #13132a; border-left: 1px solid #2a2a4a; display: flex; flex-direction: column; overflow-y: auto; }
+  #phaseCanvas { height: 280px; background: #0f0f20; border-bottom: 1px solid #2a2a4a; }
+  #phaseCanvas canvas { width: 100%; height: 100%; display: block; }
+  #statusContent { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .status-section h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: #6a6a9a; margin-bottom: 8px; }
+  .stability-badge { display: inline-block; padding: 4px 14px; border-radius: 12px; font-size: 14px; font-weight: 700; letter-spacing: 0.5px; }
+  .stable { background: #1a4a2a; color: #60e080; }
+  .unstable { background: #4a1a1a; color: #e06060; }
+  .readout { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+  .readout .label { color: #7070a0; }
+  .readout .value { color: #b0d0ff; font-weight: 600; }
+  .ec-bar-container { display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 2px 0; }
+  .ec-bar-container .name { width: 90px; color: #8080a8; }
+  .ec-bar-track { flex: 1; height: 8px; background: #1a1a30; border-radius: 4px; position: relative; overflow: hidden; }
+  .ec-bar-track::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #4a4a6a; }
+  .ec-bar-fill { position: absolute; top: 0; bottom: 0; border-radius: 4px; transition: width 0.3s, left 0.3s; }
+  .ec-pass .ec-bar-fill { background: #30a050; }
+  .ec-fail .ec-bar-fill { background: #c04040; }
+  .ec-icon { width: 16px; text-align: center; font-size: 12px; }
