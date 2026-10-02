@@ -19,7 +19,7 @@ function rk4Step(dt) {
 }
 
 
-export { rk4Step };
+
 
 let lastTime = 0;
 
