@@ -51,4 +51,4 @@ function drawPhaseSpace(){
   });
 }
 
-export { setupCanvas, resize, drawGraph, drawPotentialGraph, toX, toY, drawTimeSeries, toX, toY, drawPhaseSpace, toX, toY };
+export { setupCanvas, drawGraph, drawPotentialGraph, drawTimeSeries, drawPhaseSpace };

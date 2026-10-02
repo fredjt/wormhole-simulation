@@ -18,7 +18,5 @@ function rk4Step(dt) {
   if(autoStop&&(a_current<0.1*mu_val||a_current>50||tau>500))simRunning=false;
 }
 
-let scene,camera,renderer,shellMesh,horizonMesh;
-let threeFailed=false;
 
-export { rk4Step, deriv };
+export { rk4Step };
