@@ -20,3 +20,27 @@ function rk4Step(dt) {
 
 
 export { rk4Step };
+
+let lastTime = 0;
+
+function mainLoop(timestamp) {
+  const dtReal = Math.min((timestamp - lastTime) / 1000, 0.05);
+  lastTime = timestamp;
+  if (simRunning && !simPaused) {
+    const dtSim = dtReal * speedMultiplier;
+    const subSteps = Math.max(1, Math.ceil(dtSim / 0.01));
+    const dtSub = dtSim / subSteps;
+    for (let i = 0; i < subSteps; i++) rk4Step(dtSub);
+  }
+  if (!threeFailed && renderer) {
+    updateShellVisualization(a_current);
+    renderer.render(scene, camera);
+  }
+  drawPotentialGraph();
+  drawTimeSeries();
+  drawPhaseSpace();
+  updateStatus();
+  requestAnimationFrame(mainLoop);
+}
+
+export { rk4Step, mainLoop };
