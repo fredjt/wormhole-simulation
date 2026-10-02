@@ -5,7 +5,7 @@ function rk4Step(dt) {
   const f_a0=lapseF(a0_val,M_val,A_val,r0_val);
   if(f_a0<=0)return;
   const sigma0=-Math.sqrt(f_a0)/(2*Math.PI*a0_val);
-  function deriv(state){const[a,v]=state;if(a<=0)return[0,0];const Vpp=effPotD2(a,a0_val,sigma0,eosModel,eosParams);return[v,-Vpp/2];}
+  function deriv(state){const[a,v]=state;if(a<=0)return[0,0];const Vp=effPotPrime(a,a0_val,sigma0,eosModel,eosParams);return[v,-Vp/2];}
   const s=[a_current,v_current];
   const k1=deriv(s),s2=[s[0]+k1[0]*dt/2,s[1]+k1[1]*dt/2],k2=deriv(s2);
   const s3=[s[0]+k2[0]*dt/2,s[1]+k2[1]*dt/2],k3=deriv(s3);
