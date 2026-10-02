@@ -1,3 +1,5 @@
+let lastTime = 0;
+
 function rk4Step(dt) {
   if(!calibrated)return;
   const f_a0=lapseF(a0_val,M_val,beta_val,mu_val);
@@ -19,12 +21,7 @@ function rk4Step(dt) {
 }
 
 
-
-
-let lastTime = 0;
-
 function mainLoop(timestamp) {
-  console.log('mainLoop called, timestamp=', timestamp, 'threeFailed=', threeFailed, 'renderer=', !!renderer);
   const dtReal = Math.min((timestamp - lastTime) / 1000, 0.05);
   lastTime = timestamp;
   if (simRunning && !simPaused) {

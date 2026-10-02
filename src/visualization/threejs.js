@@ -4,34 +4,47 @@ export let threeFailed = false;
 
 function initThreeJS(){
   try{
-    console.log('initThreeJS: starting...');
-    if(typeof THREE==='undefined'){throw new Error('Three.js not loaded');}
-    console.log('THREE version:', THREE.REVISION);
+    if(typeof THREE==='undefined'){console.error('THREE not loaded');throw new Error('Three.js not loaded');}
+    console.log('Three.js version:', THREE.REVISION);
+    
     const container=document.getElementById('threeContainer');
-    scene=new THREE.Scene();scene.background=new THREE.Color(0x0a0a18);
-    camera=new THREE.PerspectiveCamera(50,1,0.1,100);camera.position.set(3,2,4);camera.lookAt(0,0,0);
+    if(!container){console.error('threeContainer not found');return;}
+    console.log('Container:', container, 'size:', container.clientWidth, 'x', container.clientHeight);
+    
+    scene=new THREE.Scene();
+    scene.background=new THREE.Color(0x0a0a18);
+    
+    camera=new THREE.PerspectiveCamera(50,1,0.1,100);
+    camera.position.set(3,2,4);
+    camera.lookAt(0,0,0);
+    
     renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+    renderer.setPixelRatio(window.devicePixelRatio);
+    console.log('WebGL supported:', !!renderer.domElement.getContext('webgl'));
     container.appendChild(renderer.domElement);
-    console.log('Renderer canvas:', renderer.domElement, 'size:', renderer.domElement.width, 'x', renderer.domElement.height);
-    console.log('Container size:', container.clientWidth, 'x', container.clientHeight);
+    console.log('Canvas appended:', renderer.domElement.width, 'x', renderer.domElement.height);
+    
     scene.add(new THREE.AmbientLight(0x404060,0.5));
-    const dir=new THREE.DirectionalLight(0xffffff,0.8);dir.position.set(3,5,4);scene.add(dir);
-    const pt=new THREE.PointLight(0x4060ff,0.5,10);pt.position.set(-2,-1,-2);scene.add(pt);
+    const dir=new THREE.DirectionalLight(0xffffff,0.8);
+    dir.position.set(3,5,4);
+    scene.add(dir);
+    
+    // Simple test sphere to verify rendering works
     const hGeo=new THREE.SphereGeometry(0.3,32,32);
-    const hMat=new THREE.MeshPhongMaterial({color:0x050510,emissive:0x0a0a20,transparent:true,opacity:0.9});
-    horizonMesh=new THREE.Mesh(hGeo,hMat);scene.add(horizonMesh);
+    const hMat=new THREE.MeshPhongMaterial({color:0x050510,emissive:0x0a0a20});
+    horizonMesh=new THREE.Mesh(hGeo,hMat);
+    scene.add(horizonMesh);
+    
     const sGeo=new THREE.SphereGeometry(1,48,48);
     const sMat=new THREE.MeshPhongMaterial({color:0x3060c0,emissive:0x2040a0,transparent:true,opacity:0.35,side:THREE.DoubleSide});
-    shellMesh=new THREE.Mesh(sGeo,sMat);scene.add(shellMesh);
-    const wGeo=new THREE.SphereGeometry(1,24,24);
-    const wMat=new THREE.MeshBasicMaterial({color:0x6090e0,wireframe:true,transparent:true,opacity:0.15});
-    shellMesh.add(new THREE.Mesh(wGeo,wMat));
-    for(let i=0;i<8;i++){const ang=(i/8)*Math.PI*2;const pts=[];for(let r=0.3;r<=6;r+=0.1)pts.push(new THREE.Vector3(r*Math.cos(ang),r*Math.sin(ang),0));scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x2a2a4a,transparent:true,opacity:0.3})));}
-    for(let i=0;i<8;i++){const ang=(i/8)*Math.PI*2+Math.PI/8;const pts=[];for(let r=0.3;r<=6;r+=0.1)pts.push(new THREE.Vector3(r*Math.cos(ang),r*Math.sin(ang),0));scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x2a2a4a,transparent:true,opacity:0.3})));}
-    for(let r=1;r<=5;r++){const rg=new THREE.RingGeometry(r-0.01,r+0.01,64);const rm=new THREE.MeshBasicMaterial({color:0x3a3a5a,side:THREE.DoubleSide,transparent:true,opacity:0.2});const ring=new THREE.Mesh(rg,rm);ring.rotation.x=-Math.PI/2;ring.position.y=-0.5;scene.add(ring);}
+    shellMesh=new THREE.Mesh(sGeo,sMat);
+    scene.add(shellMesh);
+    
     resizeThreeJS();
-    setTimeout(resizeThreeJS, 100);
+    setTimeout(resizeThreeJS, 50);
+    setTimeout(resizeThreeJS, 200);
     window.addEventListener('resize', resizeThreeJS);
+    console.log('initThreeJS complete');
   }catch(e){
     threeFailed=true;
     console.error('Three.js init failed:',e);
@@ -40,19 +53,20 @@ function initThreeJS(){
 
 function resizeThreeJS(){
   if(threeFailed||!renderer)return;
-  const c=document.getElementById('threeContainer');if(!c)return;const w=c.clientWidth,h=c.clientHeight;if(!w||!h)return;
-  camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);
+  const c=document.getElementById('threeContainer');
+  if(!c)return;
+  const w=c.clientWidth,h=c.clientHeight;
+  if(!w||!h){console.log('resize: container too small',w,'x',h);return;}
+  camera.aspect=w/h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w,h);
+  console.log('Resized to:',w,'x',h);
 }
 
 function updateShellVisualization(a){
-  if(threeFailed||!shellMesh){console.log('updateShellVisualization: skipping, threeFailed=',threeFailed,'shellMesh=',!!shellMesh);return;}
-  console.log('updateShellVisualization: a=',a,'scale=',Math.max(a,0.1));
-  const scale=Math.max(a,0.1);shellMesh.scale.set(scale,scale,scale);
-  const f_a=lapseF(a,M_val,beta_val,mu_val);
-  const sigma_a=surfaceSigma(a,Math.max(f_a,0),v_current);
-  const t=Math.min(Math.max(sigma_a/(-0.5),0),1);
-  shellMesh.material.color.setRGB((40+180*(1-t))/255,(60+120*t)/255,(192-80*t)/255);
-  shellMesh.material.opacity=Math.min(0.6,Math.max(0.1,a/3));
+  if(threeFailed||!shellMesh)return;
+  const scale=Math.max(a,0.1);
+  shellMesh.scale.set(scale,scale,scale);
 }
 
 export { initThreeJS, resizeThreeJS, updateShellVisualization };
