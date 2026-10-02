@@ -9,13 +9,13 @@ function drawPotentialGraph(){
   drawGraph(ctx,w,h,(c,cw,ch)=>{
     const pad={l:50,r:20,t:20,b:35},gw=cw-pad.l-pad.r,gh=ch-pad.t-pad.b;
     const aMin=0.2,aMax=Math.max(a0_val*3,4),N=300,pts=[];let vMin=1e9,vMax=-1e9;
-    for(let i=0;i<=N;i++){const a=aMin+(aMax-aMin)*i/N;if(lapseF(a,M_val,beta_val,mu_val)>0){const s0=calibrated?Math.sqrt(Math.abs(lapseF(a0_val,M_val,beta_val,mu_val)))/(2*Math.PI*a0_val):0.1;const V=effPot(a,a0_val,s0,eosModel,eosParams);if(isFinite(V)){pts.push({a,V});vMin=Math.min(vMin,V);vMax=Math.max(vMax,V);}}}
+    for(let i=0;i<=N;i++){const a=aMin+(aMax-aMin)*i/N;if(lapseF(a,M_val,A_val,r0_val)>0){const s0=calibrated?Math.sqrt(Math.abs(lapseF(a0_val,M_val,A_val,r0_val)))/(2*Math.PI*a0_val):0.1;const V=effPot(a,a0_val,s0,eosModel,eosParams);if(isFinite(V)){pts.push({a,V});vMin=Math.min(vMin,V);vMax=Math.max(vMax,V);}}}
     if(pts.length<2)return;
     const vRange=vMax-vMin||1;vMin-=vRange*0.1;vMax+=vRange*0.1;
     function toX(a){return pad.l+(a-aMin)/(aMax-aMin)*gw;}function toY(V){return pad.t+gh-(V-vMin)/(vMax-vMin)*gh;}
     c.strokeStyle='#1a1a30';c.lineWidth=1;for(let a=Math.ceil(aMin);a<=aMax;a++){c.beginPath();c.moveTo(toX(a),pad.t);c.lineTo(toX(a),ch-pad.b);c.stroke();}
     if(vMin<0&&vMax>0){c.strokeStyle='#3a3a5a';c.lineWidth=1;c.setLineDash([4,4]);c.beginPath();c.moveTo(pad.l,toY(0));c.lineTo(cw-pad.r,toY(0));c.stroke();c.setLineDash([]);}
-    const Vpp=calibrated?effPotD2(a0_val,a0_val,Math.sqrt(Math.abs(lapseF(a0_val,M_val,beta_val,mu_val)))/(2*Math.PI*a0_val),eosModel,eosParams):NaN;
+    const Vpp=calibrated?effPotD2(a0_val,a0_val,Math.sqrt(Math.abs(lapseF(a0_val,M_val,A_val,r0_val)))/(2*Math.PI*a0_val),eosModel,eosParams):NaN;
     const isStable=isFinite(Vpp)&&Vpp>0;
     c.strokeStyle=isStable?'#40c060':'#e05050';c.lineWidth=2.5;c.beginPath();for(let i=0;i<pts.length;i++){const x=toX(pts[i].a),y=toY(pts[i].V);i===0?c.moveTo(x,y):c.lineTo(x,y);}c.stroke();
     if(calibrated){const a0x=toX(a0_val);c.strokeStyle='#fff';c.lineWidth=1;c.setLineDash([3,3]);c.beginPath();c.moveTo(a0x,pad.t);c.lineTo(a0x,ch-pad.b);c.stroke();c.setLineDash([]);c.fillStyle='#fff';c.beginPath();c.arc(a0x,toY(0),5,0,Math.PI*2);c.fill();const pertA=a0_val*(1+parseFloat(document.getElementById('sliderDeltaA').value)/100);const pertX=toX(pertA);c.strokeStyle='#ffaa40';c.lineWidth=2;c.beginPath();c.moveTo(a0x,toY(0));c.lineTo(pertX,toY(0));c.stroke();const dir=pertX>a0x?1:-1;c.beginPath();c.moveTo(pertX,toY(0));c.lineTo(pertX-dir*6,toY(0)-4);c.lineTo(pertX-dir*6,toY(0)+4);c.closePath();c.fillStyle='#ffaa40';c.fill();}

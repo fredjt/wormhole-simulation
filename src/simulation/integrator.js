@@ -2,7 +2,7 @@ let lastTime = 0;
 
 function rk4Step(dt) {
   if(!calibrated)return;
-  const f_a0=lapseF(a0_val,M_val,beta_val,mu_val);
+  const f_a0=lapseF(a0_val,M_val,A_val,r0_val);
   if(f_a0<=0)return;
   const sigma0=-Math.sqrt(f_a0)/(2*Math.PI*a0_val);
   function deriv(state){const[a,v]=state;if(a<=0)return[0,0];const Vpp=effPotD2(a,a0_val,sigma0,eosModel,eosParams);return[v,-Vpp/2];}
@@ -17,7 +17,7 @@ function rk4Step(dt) {
   phaseHistory.push({a:a_current,v:v_current});
   if(timeHistory.length>2000)timeHistory.shift();
   if(phaseHistory.length>2000)phaseHistory.shift();
-  if(autoStop&&(a_current<0.1*mu_val||a_current>50||tau>500))simRunning=false;
+  if(autoStop&&(a_current<0.1*r0_val||a_current>50||tau>500))simRunning=false;
 }
 
 

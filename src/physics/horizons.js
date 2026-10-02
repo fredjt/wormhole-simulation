@@ -1,4 +1,4 @@
-function findHorizons(M, beta, mu) {
+function findHorizons(M, A, r0) {
   const rMin=Math.max(0.001*mu,0.001), rMax=Math.max(20.0*M,10.0);
   const N=500, rs=[], fs=[];
   for(let i=0;i<=N;i++){const r=rMin+(rMax-rMin)*i/N;rs.push(r);fs.push(lapseF(r,M,beta,mu));}

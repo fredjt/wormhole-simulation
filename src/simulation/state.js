@@ -1,9 +1,9 @@
 // Simulation parameters (exposed as globals for cross-module access)
-export let M_val = 0.1, beta_val = 0.01, mu_val = 0.0;
-export let a0_val = 2.5, delta_a_val = 0.01, v0_val = -0.1;
+export let M_val = 1.0, A_val = 0.3, r0_val = 0.5;
+export let a0_val = 1.8, delta_a_val = 0.01, v0_val = -0.1;
 export let speedMultiplier = 1.0;
 export let eosModel = 'barotropic';
-export let eosParams = {omega: -0.58};
+export let eosParams = {omega: -1.0};
 export let calibrated = true;
 export let simRunning = false;
 export let simPaused = false;
@@ -17,7 +17,7 @@ export let phaseHistory = [];
 const maxHistory = 2000;
 
 function initSim(){
-  const f_a0=lapseF(a0_val,M_val,beta_val,mu_val);
+  const f_a0=lapseF(a0_val,M_val,A_val,r0_val);
   if(f_a0<=0)return;
   let deltaAPct=parseFloat(document.getElementById('sliderDeltaA').value);
   if(document.getElementById('chkSmallPerturb').checked)deltaAPct=0.01;
