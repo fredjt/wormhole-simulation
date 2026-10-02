@@ -1,9 +1,9 @@
 // Simulation parameters (exposed as globals for cross-module access)
-export let M_val = 1.0, beta_val = 0.0, mu_val = 1.0;
+export let M_val = 1.0, beta_val = 0.0, mu_val = 0.5;
 export let a0_val = 2.5, delta_a_val = 0.01, v0_val = -0.1;
 export let speedMultiplier = 1.0;
-export let eosModel = 'barotropic';
-export let eosParams = {};
+export let eosModel = 'chaplygin';
+export let eosParams = {Ac: 2, alpha_c: 1};
 export let calibrated = false;
 export let simRunning = false;
 export let simPaused = false;
