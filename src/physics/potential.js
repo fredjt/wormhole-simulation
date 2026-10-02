@@ -36,20 +36,21 @@ function barotropicVpp(a0, M, A, r0) {
 }
 
 // Phantom calibration: Ap = -(a₀ⁿ(a₀F' + 2F))/(4F)  [Eq. B.11]
-function calibratePhantomParams(a0, M, A, r0) {
+function calibratePhantomParams(a0, M, A, r0, params) {
   const f = lapseF(a0, M, A, r0);
   if (f <= 0) return NaN;
   const fp = lapseFPrime(a0, M, A, r0);
-  const n = params.n || 1; // default n=1 for phantom
+  const n = params ? (params.n || 1) : 1; // default n=1 for phantom
   return -(Math.pow(a0, n) * (a0 * fp + 2 * f)) / (4 * f);
 }
 
 // Phantom V'': V''_P = F'' + F'/a₀ - (F')²/F + n(a₀F' + 2F)/a₀²  [Eq. B.13]
-function phantomVpp(a0, M, A, r0, n) {
+function phantomVpp(a0, M, A, r0, params) {
   const f = lapseF(a0, M, A, r0);
   if (f <= 0) return NaN;
   const fp = lapseFPrime(a0, M, A, r0);
   const fpp = lapseFDblPrime(a0, M, A, r0);
+  const n = params ? (params.n || 1) : 1; // default n=1 for phantom
   return fpp + fp / a0 - (fp * fp) / f + n * (a0 * fp + 2 * f) / (a0 * a0);
 }
 
