@@ -15,37 +15,37 @@
 <div id="controls">
   <h2>Seed Metric</h2>
   <div class="control-group">
-    <div class="slider-row"><label>M (mass) <span class="val" id="valM">1.00</span></label><input type="range" id="sliderM" min="0.3" max="5.0" step="0.01" value="0.1"></div>
-    <div class="slider-row"><label>&beta; (string cloud) <span class="val" id="valA">0.30</span></label><input type="range" id="sliderA" min="0.0" max="1.0" step="0.01" value="0.3"></div>
-    <div class="slider-row"><label>&mu; (regulator) <span class="val" id="valR0">0.50</span></label><input type="range" id="sliderR0" min="0.01" max="2.0" step="0.01" value="0.5"></div>
-    <div class="info-text" id="horizonInfo">Horizon r<sub>+</sub>: &mdash;</div>
+    <div class="slider-row"><label>M (mass) <span class="val" id="valM" title="Current mass value.">1.00</span></label><input type="range" id="sliderM" title="Mass of the black hole seed (M). Larger mass = stronger gravity." min="0.3" max="5.0" step="0.01" value="0.1"></div>
+    <div class="slider-row"><label>&beta; (string cloud) <span class="val" id="valA" title="Current string cloud strength.">0.30</span></label><input type="range" id="sliderA" title="String cloud parameter (β/A). Controls matter density around the throat." min="0.0" max="1.0" step="0.01" value="0.3"></div>
+    <div class="slider-row"><label>&mu; (regulator) <span class="val" id="valR0" title="Current regulator scale.">0.50</span></label><input type="range" id="sliderR0" title="Regulator scale (μ/r₀). Smears out the singularity to avoid infinities." min="0.01" max="2.0" step="0.01" value="0.5"></div>
+    <div class="info-text" id="horizonInfo" title="Location of the outer event horizon. Throat must be placed outside this.">Horizon r<sub>+</sub>: &mdash;</div>
   </div>
 
   <h2>Throat Placement</h2>
   <div class="control-group">
-    <div class="slider-row"><label>a<sub>0</sub> (throat radius) <span class="val" id="valA0">1.50</span></label><input type="range" id="sliderA0" min="0.5" max="5.0" step="0.01" value="1.5"></div>
-    <div class="warning" id="horizonWarn">⚠ Throat must be outside the horizon.</div>
+    <div class="slider-row"><label>a<sub>0</sub> (throat radius) <span class="val" id="valA0" title="Current throat radius.">1.50</span></label><input type="range" id="sliderA0" title="Throat radius (a₀). Where the wormhole is narrowest. Must be > horizon radius." min="0.5" max="5.0" step="0.01" value="1.5"></div>
+    <div class="warning" id="horizonWarn" title="Warning: Your throat placement is inside or at the horizon!">⚠ Throat must be outside the horizon.</div>
   </div>
 
   <h2>Fluid Model</h2>
   <div class="control-group">
-    <select id="eosSelect"><option value="barotropic">Linear Barotropic</option><option value="phantom" selected>Variable Phantom</option><option value="chaplygin">Variable Chaplygin</option><option value="cosmicChap">Generalized Cosmic Chaplygin</option><option value="modCosmicChap">Modified Cosmic Chaplygin</option></select>
+    <select id="eosSelect" title="Equation of State: describes what kind of matter fills the wormhole throat."><option value="barotropic">Linear Barotropic</option><option value="phantom" selected>Variable Phantom</option><option value="chaplygin">Variable Chaplygin</option><option value="cosmicChap">Generalized Cosmic Chaplygin</option><option value="modCosmicChap">Modified Cosmic Chaplygin</option></select>
     <div id="eosParams"></div>
-    <button id="btnCalibrate" style="background:#3a5a8a;color:#fff;font-size:12px;padding:6px;">Calibrate at a<sub>0</sub></button>
+    <button id="btnCalibrate" title="Auto-tune EOS parameters so the throat is in equilibrium at current a₀." style="background:#3a5a8a;color:#fff;font-size:12px;padding:6px;">Calibrate at a<sub>0</sub></button>
   </div>
 
   <h2>Perturbation</h2>
   <div class="control-group">
-    <div class="slider-row"><label>&delta;a (displacement) <span class="val" id="valDeltaA">5.0%</span></label><input type="range" id="sliderDeltaA" min="-10" max="10" step="0.5" value="5"></div>
-    <div class="slider-row"><label>v<sub>&tau;</sub> (initial velocity) <span class="val" id="valV0">0.00</span></label><input type="range" id="sliderV0" min="-2" max="2" step="0.05" value="0"></div>
-    <div class="toggle-row"><input type="checkbox" id="chkSmallPerturb"><label for="chkSmallPerturb">Small perturbation (linear regime)</label></div>
+    <div class="slider-row"><label>&delta;a (displacement) <span class="val" id="valDeltaA" title="Current displacement from equilibrium as percentage.">5.0%</span></label><input type="range" id="sliderDeltaA" title="Displacement from equilibrium (delta a). How far to push the throat initially." min="-10" max="10" step="0.5" value="5"></div>
+    <div class="slider-row"><label>v<sub>&tau;</sub> (initial velocity) <span class="val" id="valV0" title="Current initial velocity.">0.00</span></label><input type="range" id="sliderV0" title="Initial velocity of perturbation. Positive = expanding, negative = contracting." min="-2" max="2" step="0.05" value="0"></div>
+    <div class="toggle-row"><input type="checkbox" id="chkSmallPerturb" title="Use linearized equations for small perturbations." title="Linear regime checkbox. When checked, uses linearized equations for small perturbations."><label for="chkSmallPerturb">Small perturbation (linear regime)</label></div>
   </div>
 
   <h2>Playback</h2>
   <div class="control-group">
-    <div class="btn-row"><button id="btnPlay">▶ Play</button><button id="btnPause">⏸ Pause</button><button id="btnReset">↺ Reset</button></div>
-    <div class="slider-row"><label>Speed <span class="val" id="valSpeed">5.0&times;</span></label><input type="range" id="sliderSpeed" min="0.1" max="50" step="0.1" value="5"></div>
-    <div class="toggle-row"><input type="checkbox" id="chkAutoStop" checked><label for="chkAutoStop">Auto-stop on collapse or bounce</label></div>
+    <div class="btn-row"><button id="btnPlay" title="Start the simulation. The throat will evolve according to the equations of motion.">▶ Play</button><button id="btnPause" title="Pause the simulation at its current state.">⏸ Pause</button><button id="btnReset" title="Reset everything to initial conditions.">↺ Reset</button></div>
+    <div class="slider-row"><label>Speed <span class="val" id="valSpeed" title="Current speed multiplier.">5.0&times;</span></label><input type="range" id="sliderSpeed" title="Simulation speed multiplier. Higher = faster time evolution." min="0.1" max="50" step="0.1" value="5"></div>
+    <div class="toggle-row"><input type="checkbox" id="chkAutoStop" title="Automatically stop when throat collapses or bounces back." title="Automatically stop simulation when throat collapses or bounces back." checked><label for="chkAutoStop">Auto-stop on collapse or bounce</label></div>
   </div>
 
   <h2>About</h2>
@@ -63,17 +63,17 @@
   <div id="phaseCanvas"><canvas id="phaseCanvasEl"></canvas></div>
   <div id="statusContent">
     <div class="status-section"><h3>Stability</h3><span class="stability-badge" id="stabBadge">&mdash;</span>
-      <div class="readout"><span class="label">V″(a<sub>0</sub>)</span><span class="value" id="valVpp">&mdash;</span></div>
-      <div class="readout"><span class="label">Freq. (if stable)</span><span class="value" id="valFreq">&mdash;</span></div>
+      <div class="readout"><span class="label">V″(a<sub>0</sub>)</span><span class="value" id="valVpp" title="Second derivative of effective potential at equilibrium. Positive = stable.">&mdash;</span></div>
+      <div class="readout"><span class="label">Freq. (if stable)</span><span class="value" id="valFreq" title="Oscillation frequency if stable: sqrt(Vpp)/2pi.">&mdash;</span></div>
     </div>
     <div class="status-section"><h3>Current State</h3>
       <div class="readout"><span class="label">Radius a(&tau;)</span><span class="value" id="valA">&mdash;</span></div>
       <div class="readout"><span class="label">Delta from eq.</span><span class="value" id="valADelta">&mdash;</span></div>
-      <div class="readout"><span class="label">Velocity δa/δτ</span><span class="value" id="valV">&mdash;</span></div>
+      <div class="readout"><span class="label">Velocity δa/δτ</span><span class="value" id="valV" title="Current radial velocity of the throat (delta a / delta tau).">&mdash;</span></div>
     </div>
     <div class="status-section"><h3>Surface Properties</h3>
-      <div class="readout"><span class="label">&sigma;(a)</span><span class="value" id="valSigma">&mdash;</span></div>
-      <div class="readout"><span class="label">Pressure p(a)</span><span class="value" id="valP">&mdash;</span></div>
+      <div class="readout"><span class="label">&sigma;(a)</span><span class="value" id="valSigma" title="Surface energy density at current throat radius.">&mdash;</span></div>
+      <div class="readout"><span class="label">Pressure p(a)</span><span class="value" id="valP" title="Tangential pressure at current throat radius.">&mdash;</span></div>
     </div>
     <div class="status-section"><h3>Energy Conditions</h3><div id="ecBars"></div></div>
     <div class="status-section"><h3>Active Model</h3>
