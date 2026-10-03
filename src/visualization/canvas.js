@@ -15,7 +15,7 @@ function drawPotentialGraph(){
     function toX(a){return pad.l+(a-aMin)/(aMax-aMin)*gw;}function toY(V){return pad.t+gh-(V-vMin)/(vMax-vMin)*gh;}
     c.strokeStyle='#1a1a30';c.lineWidth=1;for(let a=Math.ceil(aMin);a<=aMax;a++){c.beginPath();c.moveTo(toX(a),pad.t);c.lineTo(toX(a),ch-pad.b);c.stroke();}
     if(vMin<0&&vMax>0){c.strokeStyle='#3a3a5a';c.lineWidth=1;c.setLineDash([4,4]);c.beginPath();c.moveTo(pad.l,toY(0));c.lineTo(cw-pad.r,toY(0));c.stroke();c.setLineDash([]);}
-    const Vpp=calibrated?computeVpp(a0_val):NaN;
+    const Vpp=calibrated?computeVppOptimized():NaN;
     const isStable=isFinite(Vpp)&&Vpp>0;
     c.strokeStyle=isStable?'#40c060':'#e05050';c.lineWidth=2.5;c.beginPath();for(let i=0;i<pts.length;i++){const x=toX(pts[i].a),y=toY(pts[i].V);i===0?c.moveTo(x,y):c.lineTo(x,y);}c.stroke();
     if(calibrated){const a0x=toX(a0_val);c.strokeStyle='#fff';c.lineWidth=1;c.setLineDash([3,3]);c.beginPath();c.moveTo(a0x,pad.t);c.lineTo(a0x,ch-pad.b);c.stroke();c.setLineDash([]);c.fillStyle='#fff';c.beginPath();c.arc(a0x,toY(0),5,0,Math.PI*2);c.fill();const pertA=a0_val*(1+parseFloat(document.getElementById('sliderDeltaA').value)/100);const pertX=toX(pertA);c.strokeStyle='#ffaa40';c.lineWidth=2;c.beginPath();c.moveTo(a0x,toY(0));c.lineTo(pertX,toY(0));c.stroke();const dir=pertX>a0x?1:-1;c.beginPath();c.moveTo(pertX,toY(0));c.lineTo(pertX-dir*6,toY(0)-4);c.lineTo(pertX-dir*6,toY(0)+4);c.closePath();c.fillStyle='#ffaa40';c.fill();}

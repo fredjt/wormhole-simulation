@@ -1,13 +1,22 @@
 // Unified Vpp computation — single source of truth for stability determination.
 // Uses numerical second derivative of the effective potential via central differences,
 // which correctly accounts for how sigma changes when 'a' is perturbed (including
-// EOS-model-specific behavior in computeSigmaFromEOS). This avoids discrepancies that
-// arise from using analytical formulas (barotropicVpp) or pre-computed sigma0 values.
+// EOS-model-specific behavior in computeSigmaFromEOS).
 function computeVpp(a0_val_param) {
-  const f = lapseF(a0_val_param, M_val, A_val, r0_val);
-  if (!isFinite(f)) return NaN;
-  const s0 = Math.sqrt(Math.abs(f)) / (2 * Math.PI * a0_val_param);
+  // Guard against invalid inputs: non-positive throat radius or non-finite lapse.
+  if (!isFinite(f = lapseF(a0_val_param, M_val, A_val, r0_val)) || a0_val_param <= 0)
+    return NaN;
+  // σ must be negative for exotic matter (thin-shell wormhole convention).
+  const s0 = -Math.sqrt(Math.abs(f)) / (2 * Math.PI * a0_val_param);
   return effPotD2(a0_val_param, a0_val_param, s0, eosModel, eosParams);
+}
+
+// Optimized Vpp: use analytical formula for barotropic EOS when available,
+// otherwise fall back to unified numerical approach. This avoids the performance
+// regression of evaluating hypergeometric functions 3x per frame for a closed-form result.
+function computeVppOptimized() {
+  if (eosModel === 'barotropic') return barotropicVpp(a0_val, M_val, A_val, r0_val);
+  return computeVpp(a0_val);
 }
 
 // Effective potential and stability analysis for thin-shell wormholes
@@ -119,6 +128,6 @@ function calibrateModCosmicChap(a0, M, A, r0) {
   return bestAmcc;
 }
 
-export { computeVpp, effPot, effPotPrime, effPotD2, calibrateOmega, barotropicVpp, 
-         calibratePhantomParams, phantomVpp, calibrateChaplyginParams,
+export { computeVpp, computeVppOptimized, effPot, effPotPrime, effPotD2, calibrateOmega,
+         calibratePhantomParams, calibrateChaplyginParams,
          calibrateCosmicChap, calibrateModCosmicChap };
