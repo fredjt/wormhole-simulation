@@ -49,7 +49,7 @@
   </div>
 
   <h2>About</h2>
-  <button id="helpBtn" class="help-btn" onclick="document.getElementById('helpModal').classList.add('active')" style="width:100%;margin-top:8px;">❓ How to Read This</button>
+  <button id="helpBtn" class="help-btn"  style="width:100%;margin-top:8px;">❓ How to Read This</button>
   <div class="info-text">Simulates radial dynamics of a thin-shell wormhole throat from a regularized Letelier&ndash;Alencar string-cloud black hole. Based on arXiv:2610.00131 (Zhong et al., 2026).</div>
 </div>
 
@@ -132,5 +132,10 @@
     </ul>
   </div>
 </div>
-<script>document.getElementById("helpModal").style.display="none";</script>
+<script>
+  document.getElementById("helpModal").style.display="none";
+  document.getElementById("helpBtn").addEventListener("click", function() {
+    document.getElementById("helpModal").classList.add("active");
+  });
+</script>
 </body>
