@@ -20,6 +20,9 @@ globalThis.lapseFDblPrime = lapse.lapseFDblPrime;
 globalThis.effPot = potential.effPot;
 globalThis.effPotPrime = potential.effPotPrime;
 globalThis.effPotD2 = potential.effPotD2;
+globalThis.effPotPrimeBarotropicFast = potential.effPotPrimeBarotropicFast;
+globalThis.effPotPrimeBarotropic = potential.effPotPrimeBarotropic;
+
 globalThis.calibrateOmega = potential.calibrateOmega;
 globalThis.barotropicVpp = potential.barotropicVpp;
 globalThis.calibratePhantomParams = potential.calibratePhantomParams;

@@ -1,3 +1,28 @@
+// Import getFPrimeInterp from lapse module (used by fast barotropic derivative)
+import { getFPrimeInterp } from './lapse.js';
+
+// Unified Vpp computation — single source of truth for stability determination.
+// Uses numerical second derivative of the effective potential via central differences,
+// which correctly accounts for how sigma changes when 'a' is perturbed (including
+// EOS-model-specific behavior in computeSigmaFromEOS).
+function computeVpp(a0_val_param) {
+  const f = lapseF(a0_val_param, M_val, A_val, r0_val);
+  // Guard against invalid inputs: non-positive throat radius or non-finite lapse.
+  if (!isFinite(f) || a0_val_param <= 0)
+    return NaN;
+  // σ must be negative for exotic matter (thin-shell wormhole convention).
+  const s0 = -Math.sqrt(Math.abs(f)) / (2 * Math.PI * a0_val_param);
+  return effPotD2(a0_val_param, a0_val_param, s0, eosModel, eosParams);
+}
+
+// Optimized Vpp: use analytical formula for barotropic EOS when available,
+// otherwise fall back to unified numerical approach. This avoids the performance
+// regression of evaluating hypergeometric functions 3x per frame for a closed-form result.
+function computeVppOptimized() {
+  if (eosModel === 'barotropic') return barotropicVpp(a0_val, M_val, A_val, r0_val);
+  return computeVpp(a0_val);
+}
+
 // Effective potential and stability analysis for thin-shell wormholes
 // Based on arXiv:2610.00131 (Zhong et al.)
 
@@ -16,6 +41,35 @@ function effPotD2(a, a0, s0, model, params) {
   const h = 1e-5;
   return (effPot(a + h, a0, s0, model, params) - 2 * effPot(a, a0, s0, model, params) + effPot(a - h, a0, s0, model, params)) / (h * h);
 }
+
+/**
+ * Analytical first derivative of effective potential for barotropic EOS.
+ * For σ = σ₀·(a/a₀)^(-2(1+ω)), V'(a) = F'(a) + 2π²·σ²(a)·[4+n_σ].
+ */
+function effPotPrimeBarotropic(a, a0, s0, omega) {
+  const n_sigma = 2.0 * (1.0 + omega);
+  // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ)
+  const sigma_sq_scaled = (s0 * s0) * Math.pow(a / a0, -n_sigma);
+  return lapseFPrime(a, M_val, A_val, r0_val) + 
+         2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;
+}
+
+/**
+ * Fast analytical first derivative for barotropic EOS — uses pre-computed F' grid.
+ * Calls getFPrimeInterp() which returns an O(1) interpolated value from the 
+ * precomputed (r, dF/dr) grid built by initFPGrid(). No hypergeom2F1 per step.
+ */
+function effPotPrimeBarotropicFast(a, a0, s0, omega) {
+  const n_sigma = 2.0 * (1.0 + omega);
+  // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ)
+  const sigma_sq_scaled = (s0 * s0) * Math.pow(a / a0, -n_sigma);
+  return getFPrimeInterp(a, M_val, A_val, r0_val) + 
+         2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;
+}
+
+/**
+ * Analytical second derivative of the effective potential for barotropic EOS.
+ */
 
 // Barotropic calibration: ω = -(a₀F' + 2F)/(4F)  [Eq. B.4]
 function calibrateOmega(a0, M, A, r0) {
@@ -107,6 +161,11 @@ function calibrateModCosmicChap(a0, M, A, r0) {
   return bestAmcc;
 }
 
-export { effPot, effPotPrime, effPotD2, calibrateOmega, barotropicVpp, 
-         calibratePhantomParams, phantomVpp, calibrateChaplyginParams,
+// Export list: core functions first (computeVpp + V(a) helpers), then calibration.
+// barotropicVpp and phantomVpp remain exported for analytical reference and test coverage.
+export { computeVpp, computeVppOptimized,
+         effPot, effPotPrime, effPotD2,
+         calibrateOmega, barotropicVpp,
+         calibratePhantomParams, phantomVpp,
+         calibrateChaplyginParams,
          calibrateCosmicChap, calibrateModCosmicChap };
