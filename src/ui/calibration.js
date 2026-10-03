@@ -67,8 +67,9 @@ function updateEosParamsUI(){
       numInput.value = Math.round(parseFloat(numInput.value)*100)/100;
       const slider = document.getElementById(sliderId);
       if (slider) { 
-        scheduleReadParams();
+        // Update slider FIRST so readParams captures current values from DOM
         slider.value = numInput.value; 
+        scheduleReadParams();
       }
     };
 
