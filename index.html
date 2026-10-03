@@ -271,4 +271,123 @@ function initSliderInputs() {
 // Call when DOM is ready
 document.addEventListener('DOMContentLoaded', initSliderInputs);
 </script>
+
+// Synchronize sliders with number inputs (with custom spin buttons)
+function initSliderInputs() {
+  const sliders = document.querySelectorAll('input[type="range"]');
+  
+  sliders.forEach(slider => {
+    // Create or find the corresponding number input wrapper
+    let wrapper = document.getElementById(slider.id + '-wrapper');
+    
+    if (!wrapper) {
+      // Find the parent slider-row and add a wrapped number input
+      const row = slider.closest('.slider-row');
+      if (row) {
+        const label = row.querySelector('label');
+        if (label) {
+          // Create wrapper div
+          wrapper = document.createElement('div');
+          wrapper.id = slider.id + '-wrapper';
+          wrapper.className = 'input-with-spinners';
+          
+          // Create number input
+          const numInput = document.createElement('input');
+          numInput.type = 'number';
+          numInput.id = slider.id + '-input';
+          numInput.className = 'slider-input';
+          numInput.min = slider.min;
+          numInput.max = slider.max;
+          numInput.step = slider.step || '0.01';
+          numInput.value = parseFloat(slider.value).toFixed(2);
+          
+          // Create spin buttons
+          const upBtn = document.createElement('div');
+          upBtn.className = 'input-spin-btn input-spin-up';
+          upBtn.title = 'Increase value';
+          
+          const downBtn = document.createElement('div');
+          downBtn.className = 'input-spin-btn input-spin-down';
+          downBtn.title = 'Decrease value';
+          
+          // Append to wrapper
+          wrapper.appendChild(numInput);
+          wrapper.appendChild(upBtn);
+          wrapper.appendChild(downBtn);
+          
+          // Insert before the range input
+          label.appendChild(wrapper);
+          
+          // Add event listeners for spin buttons
+          upBtn.addEventListener('click', () => {
+            let val = parseFloat(numInput.value) + parseFloat(slider.step || 0.01);
+            val = Math.min(parseFloat(slider.max), val);
+            numInput.value = val.toFixed(2);
+            slider.value = val;
+            readParams();
+            if (simRunning) resetSim();
+          });
+          
+          downBtn.addEventListener('click', () => {
+            let val = parseFloat(numInput.value) - parseFloat(slider.step || 0.01);
+            val = Math.max(parseFloat(slider.min), val);
+            numInput.value = val.toFixed(2);
+            slider.value = val;
+            readParams();
+            if (simRunning) resetSim();
+          });
+        }
+      }
+    } else {
+      // Wrapper already exists, just sync values
+      const numInput = wrapper.querySelector('input[type="number"]');
+      if (numInput && numInput.value !== parseFloat(slider.value).toFixed(2)) {
+        numInput.value = parseFloat(slider.value).toFixed(2);
+      }
+    }
+    
+    // Sync: slider -> number input
+    slider.addEventListener('input', () => {
+      const numInput = document.getElementById(slider.id + '-input');
+      if (numInput) {
+        numInput.value = parseFloat(slider.value).toFixed(2);
+      }
+      readParams();
+      if (simRunning) resetSim();
+    });
+    
+    // Sync: number input -> slider
+    const numInput = document.getElementById(slider.id + '-input');
+    if (numInput) {
+      numInput.addEventListener('input', () => {
+        let val = parseFloat(numInput.value);
+        if (!isNaN(val)) {
+          // Clamp to range
+          val = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), val));
+          slider.value = val;
+          numInput.value = val.toFixed(2);
+          readParams();
+          if (simRunning) resetSim();
+        }
+      });
+      
+      // Handle blur - validate and format
+      numInput.addEventListener('blur', () => {
+        let val = parseFloat(numInput.value);
+        if (isNaN(val)) {
+          numInput.value = slider.value;
+        } else {
+          val = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), val));
+          numInput.value = val.toFixed(2);
+          slider.value = val;
+        }
+      });
+    }
+  });
+}
+
+// Call when DOM is ready
+document.addEventListener('DOMContentLoaded', initSliderInputs);
+
+</script>
 </body>
