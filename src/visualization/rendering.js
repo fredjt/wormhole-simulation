@@ -9,8 +9,8 @@ function renderEnergyConditions(){
   let html='';conditions.forEach(ec=>{let strength=0;if(ec.name==='Weak')strength=Math.min(1,Math.max(-1,sigma_a+p_a));else if(ec.name==='Dominant')strength=Math.min(1,Math.max(-1,sigma_a-Math.abs(p_a)));else if(ec.name==='Null')strength=Math.min(1,Math.max(-1,sigma_a+p_a));else strength=Math.min(1,Math.max(-1,sigma_a+3*p_a));const pct=((strength+1)/2)*50;const cls=(ec.check())?'ec-pass':'ec-fail';const icon=(ec.check())?String.fromCharCode(10004):String.fromCharCode(10006);html+='<div class="ec-bar-container '+cls+'"><span class="name">'+ec.name+'</span><div class="ec-bar-track"><div class="ec-bar-fill" style="left:'+Math.min(50,Math.max(0,pct))+'%;width:'+Math.abs(pct-50)+'%"></div></div><span class="ec-icon">'+icon+'</span></div>';});container.innerHTML=html;}
 
 function updateStatus(){
-  const f_a0=lapseF(a0_val,M_val,A_val,r0_val);const sigma0=calibrated?-Math.sqrt(Math.max(f_a0,0))/(2*Math.PI*a0_val):NaN;let vpp=NaN;
-  if(calibrated){if(eosModel==='barotropic'){vpp=barotropicVpp(a0_val,M_val,A_val,r0_val);}else if(eosModel==='phantom'){vpp=phantomVpp(a0_val,M_val,A_val,r0_val,eosParams);}else{vpp=effPotD2(a0_val,a0_val,sigma0,eosModel,eosParams);}}const isStable=isFinite(vpp)&&vpp>0;
+  const vpp = calibrated ? computeVppOptimized() : NaN;
+  const isStable = isFinite(vpp) && vpp > 0;
   const badge=document.getElementById('stabBadge');if(!calibrated||isNaN(vpp)){badge.textContent='\u2014';badge.className='stability-badge';}else{badge.textContent=isStable?'STABLE':'UNSTABLE';badge.className='stability-badge '+(isStable?'stable':'unstable');}
   document.getElementById('valVpp').textContent=isFinite(vpp)?vpp.toFixed(4):'\u2014';document.getElementById('valFreq').textContent=isStable?(Math.sqrt(vpp)/(2*Math.PI)).toFixed(3):'\u2014';
   document.getElementById('valA').textContent=a_current.toFixed(4);document.getElementById('valADelta').textContent=calibrated?((a_current-a0_val)/a0_val*100).toFixed(2)+'%':'\u2014';document.getElementById('valV').textContent=v_current.toFixed(4);

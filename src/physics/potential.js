@@ -1,3 +1,25 @@
+// Unified Vpp computation — single source of truth for stability determination.
+// Uses numerical second derivative of the effective potential via central differences,
+// which correctly accounts for how sigma changes when 'a' is perturbed (including
+// EOS-model-specific behavior in computeSigmaFromEOS).
+function computeVpp(a0_val_param) {
+  const f = lapseF(a0_val_param, M_val, A_val, r0_val);
+  // Guard against invalid inputs: non-positive throat radius or non-finite lapse.
+  if (!isFinite(f) || a0_val_param <= 0)
+    return NaN;
+  // σ must be negative for exotic matter (thin-shell wormhole convention).
+  const s0 = -Math.sqrt(Math.abs(f)) / (2 * Math.PI * a0_val_param);
+  return effPotD2(a0_val_param, a0_val_param, s0, eosModel, eosParams);
+}
+
+// Optimized Vpp: use analytical formula for barotropic EOS when available,
+// otherwise fall back to unified numerical approach. This avoids the performance
+// regression of evaluating hypergeometric functions 3x per frame for a closed-form result.
+function computeVppOptimized() {
+  if (eosModel === 'barotropic') return barotropicVpp(a0_val, M_val, A_val, r0_val);
+  return computeVpp(a0_val);
+}
+
 // Effective potential and stability analysis for thin-shell wormholes
 // Based on arXiv:2610.00131 (Zhong et al.)
 
@@ -107,6 +129,11 @@ function calibrateModCosmicChap(a0, M, A, r0) {
   return bestAmcc;
 }
 
-export { effPot, effPotPrime, effPotD2, calibrateOmega, barotropicVpp, 
-         calibratePhantomParams, phantomVpp, calibrateChaplyginParams,
+// Export list: core functions first (computeVpp + V(a) helpers), then calibration.
+// barotropicVpp and phantomVpp remain exported for analytical reference and test coverage.
+export { computeVpp, computeVppOptimized,
+         effPot, effPotPrime, effPotD2,
+         calibrateOmega, barotropicVpp,
+         calibratePhantomParams, phantomVpp,
+         calibrateChaplyginParams,
          calibrateCosmicChap, calibrateModCosmicChap };
