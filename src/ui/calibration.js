@@ -21,7 +21,81 @@ function readParams(){
   if(g('valSpeed'))g('valSpeed').textContent=speedMultiplier.toFixed(1)+'\u00d7';
 }
 
-function updateEosParamsUI(){const container=document.getElementById('eosParams');let html='';switch(eosModel){case'barotropic':html+='<div class="slider-row"><label>&omega; <input type="number" id="sliderOmega-input" class="slider-input" min="-1.5" max="0" step="0.01" value="'+eosParams.omega.toFixed(2)+'"></label><input type="range" id="sliderOmega" min="-1.5" max="0" step="0.01" value="'+eosParams.omega+'"></div>';break;case'phantom':html+='<div class="slider-row"><label>A<sub>p</sub> <input type="number" id="sliderAp-input" class="slider-input" min="0" max="5" step="0.1" value="'+eosParams.Ap.toFixed(2)+'"></label><input type="range" id="sliderAp" min="0" max="5" step="0.1" value="'+eosParams.Ap+'"></div><div class="slider-row"><label>&alpha;<sub>p</sub> <input type="number" id="sliderAlphaP-input" class="slider-input" min="0" max="3" step="0.1" value="'+eosParams.alpha_p.toFixed(2)+'"></label><input type="range" id="sliderAlphaP" min="0" max="3" step="0.1" value="'+eosParams.alpha_p+'"></div><div class="slider-row"><label>n <input type="number" id="sliderN-input" class="slider-input" min="1" max="10" step="0.5" value="'+eosParams.n.toFixed(1)+'"></label><input type="range" id="sliderN" min="1" max="10" step="0.5" value="'+eosParams.n+'"></div>';break;case'chaplygin':html+='<div class="slider-row"><label>A<sub>c</sub> <input type="number" id="sliderAc-input" class="slider-input" min="0.1" max="10" step="0.1" value="'+eosParams.Ac.toFixed(2)+'"></label><input type="range" id="sliderAc" min="0.1" max="10" step="0.1" value="'+eosParams.Ac+'"></div><div class="slider-row"><label>&alpha;<sub>c</sub> <input type="number" id="sliderAlphaC-input" class="slider-input" min="0.1" max="3" step="0.1" value="'+eosParams.alpha_c.toFixed(2)+'"></label><input type="range" id="sliderAlphaC" min="0.1" max="3" step="0.1" value="'+eosParams.alpha_c+'"></div>';break;case'cosmicChap':html+='<div class="slider-row"><label>A<sub>gc</sub> <input type="number" id="sliderAgc-input" class="slider-input" min="0.1" max="10" step="0.1" value="'+eosParams.Agc.toFixed(2)+'"></label><input type="range" id="sliderAgc" min="0.1" max="10" step="0.1" value="'+eosParams.Agc+'"></div><div class="slider-row"><label>n<sub>gc</sub> <input type="number" id="sliderNgc-input" class="slider-input" min="1" max="5" step="0.1" value="'+eosParams.n_gc.toFixed(2)+'"></label><input type="range" id="sliderNgc" min="1" max="5" step="0.1" value="'+eosParams.n_gc+'"></div>';break;case'modCosmicChap':html+='<div class="slider-row"><label>A<sub>mcc</sub> <input type="number" id="sliderAmcc-input" class="slider-input" min="0.1" max="10" step="0.1" value="'+eosParams.Amcc.toFixed(2)+'"></label><input type="range" id="sliderAmcc" min="0.1" max="10" step="0.1" value="'+eosParams.Amcc+'"></div><div class="slider-row"><label>m<sub>mcc</sub> <input type="number" id="sliderMmcc-input" class="slider-input" min="1" max="5" step="0.1" value="'+eosParams.m_mcc.toFixed(2)+'"></label><input type="range" id="sliderMmcc" min="1" max="5" step="0.1" value="'+eosParams.m_mcc+'"></div>';break;}container.innerHTML=html;container.querySelectorAll('input[type="range"]').forEach(sl=>{sl.addEventListener('input',()=>{readParams();if(simRunning)resetSim();});});}
+function makeEosRow(labelHtml, inputId, minVal, maxVal, stepVal, displayValue){
+  const numInputId=inputId+'-num';
+  return '<div class="slider-row"><label>'+labelHtml+'</label><div id="'+inputId+'-wrapper" class="number-input-group">' +
+    '<input type="number" id="'+numInputId+'" class="wormhole-number-input" min="'+minVal+'" max="'+maxVal+'" step="'+stepVal+'" value="'+displayValue+'">' +
+    '<button type="button" class="spin-button spin-button-up"></button>' +
+    '<button type="button" class="spin-button spin-button-down"></button></div><input type="range" id="'+inputId+'" min="'+minVal+'" max="'+maxVal+'" step="'+stepVal+'" value="'+displayValue+'"></div>';
+}
+
+function updateEosParamsUI(){
+  const container=document.getElementById('eosParams');
+  let html='';
+  switch(eosModel){
+    case'barotropic':html+=makeEosRow('&omega;','sliderOmega','-1.5','0','0.01',eosParams.omega.toFixed(2));break;
+    case'phantom':
+      html+=makeEosRow('A<sub>p</sub>','sliderAp','0','5','0.1',eosParams.Ap.toFixed(2))+
+            makeEosRow('&alpha;<sub>p</sub>','sliderAlphaP','0','3','0.1',eosParams.alpha_p.toFixed(2))+
+            makeEosRow('n','sliderN','1','10','0.5',eosParams.n.toFixed(1));break;
+    case'chaplygin':html+=makeEosRow('A<sub>c</sub>','sliderAc','0.1','10','0.1',eosParams.Ac.toFixed(2))+
+                       makeEosRow('&alpha;<sub>c</sub>','sliderAlphaC','0.1','3','0.1',eosParams.alpha_c.toFixed(2));break;
+    case'cosmicChap':html+=makeEosRow('A<sub>gc</sub>','sliderAgc','0.1','10','0.1',eosParams.Agc.toFixed(2))+
+                           makeEosRow('n<sub>gc</sub>','sliderNgc','1','5','0.1',eosParams.n_gc.toFixed(2));break;
+    case'modCosmicChap':html+=makeEosRow('A<sub>mcc</sub>','sliderAmcc','0.1','10','0.1',eosParams.Amcc.toFixed(2))+
+                              makeEosRow('m<sub>mcc</sub>','sliderMmcc','1','5','0.1',eosParams.m_mcc.toFixed(2));break;
+  }
+  container.innerHTML=html;
+
+  // Wire up event listeners for dynamic EOS controls
+  const rangeInputs = container.querySelectorAll('input[type="range"]');
+  rangeInputs.forEach(sl => {
+    sl.addEventListener('input', () => { readParams(); if(simRunning) resetSim(); });
+  });
+
+  // Wire up number inputs and spin buttons for dynamic EOS controls
+  const groupIds = container.querySelectorAll('[id$="-wrapper"]');
+  groupIds.forEach(wrapper => {
+    const sliderId = wrapper.id.replace('-wrapper', '');
+    const numInput = document.getElementById(sliderId + '-num');
+    if (!numInput) return;
+    const step = parseFloat(numInput.step || '0.01');
+
+    // Sync number input -> range slider
+    numInput.addEventListener('input', () => {
+      let val = parseFloat(numInput.value);
+      if (!isNaN(val)) {
+        val = Math.max(parseFloat(numInput.min), Math.min(parseFloat(numInput.max), val));
+        numInput.value = Math.round(val * 100) / 100;
+        const slider = document.getElementById(sliderId);
+        if (slider) { slider.value = numInput.value; readParams(); }
+      }
+    });
+
+    // Spin buttons
+    wrapper.querySelector('.spin-button-up').addEventListener('click', () => {
+      let val = parseFloat(numInput.value) + step;
+      val = Math.min(parseFloat(numInput.max), val);
+      numInput.value = Math.round(val * 100) / 100;
+      const slider = document.getElementById(sliderId);
+      if (slider) { slider.value = numInput.value; readParams(); }
+    });
+
+    wrapper.querySelector('.spin-button-down').addEventListener('click', () => {
+      let val = parseFloat(numInput.value) - step;
+      val = Math.max(parseFloat(numInput.min), val);
+      numInput.value = Math.round(val * 100) / 100;
+      const slider = document.getElementById(sliderId);
+      if (slider) { slider.value = numInput.value; readParams(); }
+    });
+
+    // Arrow key support in number input
+    numInput.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp') { e.preventDefault(); wrapper.querySelector('.spin-button-up').click(); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); wrapper.querySelector('.spin-button-down').click(); }
+    });
+  });
+}
 
 function updateHorizonInfo(){
   const g=id=>document.getElementById(id);
