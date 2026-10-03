@@ -1,3 +1,5 @@
+// Import getFPrimeInterp from lapse module
+import { getFPrimeInterp } from './lapse.js';
 // Unified Vpp computation — single source of truth for stability determination.
 // Uses numerical second derivative of the effective potential via central differences,
 // which correctly accounts for how sigma changes when 'a' is perturbed (including
@@ -127,6 +129,24 @@ function calibrateModCosmicChap(a0, M, A, r0) {
     }
   }
   return bestAmcc;
+}
+
+/** Analytical first derivative of effective potential for barotropic EOS. */
+function effPotPrimeBarotropic(a, a0, s0, omega) {
+  const n_sigma = 2.0 * (1.0 + omega);
+  // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ)
+  const sigma_sq_scaled = (s0 * s0) * Math.pow(a / a0, -n_sigma);
+  return lapseFPrime(a, M_val, A_val, r0_val) + 
+         2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;
+}
+
+/** Fast analytical first derivative for barotropic EOS — uses pre-computed F' grid (zero hypergeom calls). */
+function effPotPrimeBarotropicFast(a, a0, s0, omega) {
+  const n_sigma = 2.0 * (1.0 + omega);
+  // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ)
+  const sigma_sq_scaled = (s0 * s0) * Math.pow(a / a0, -n_sigma);
+  return getFPrimeInterp(a, M_val, A_val, r0_val) + 
+         2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;
 }
 
 // Export list: core functions first (computeVpp + V(a) helpers), then calibration.
