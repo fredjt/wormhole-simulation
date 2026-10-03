@@ -22,11 +22,13 @@ function readParams(){
 }
 
 function makeEosRow(labelHtml, inputId, minVal, maxVal, stepVal, displayValue){
-  const numInputId=inputId+'-num';
+  const numInputId=inputId+'-input';
+  // Strip HTML tags from label for aria text (e.g. 'A<sub>p</sub>' -> 'Ap')
+  const plainLabel=labelHtml.replace(/<[^>]*>/g,'');
   return '<div class="slider-row"><label>'+labelHtml+'</label><div id="'+inputId+'-wrapper" class="number-input-group">' +
-    '<input type="number" id="'+numInputId+'" class="wormhole-number-input" min="'+minVal+'" max="'+maxVal+'" step="'+stepVal+'" value="'+displayValue+'">' +
-    '<button type="button" class="spin-button spin-button-up"></button>' +
-    '<button type="button" class="spin-button spin-button-down"></button></div><input type="range" id="'+inputId+'" min="'+minVal+'" max="'+maxVal+'" step="'+stepVal+'" value="'+displayValue+'"></div>';
+    '<input type="number" id="'+numInputId+'" class="wormhole-number-input" min="'+minVal+'" max="'+maxVal+'" step="'+stepVal+'" value="'+displayValue+'" aria-label="'+plainLabel+' parameter input">' +
+    '<button type="button" class="spin-button spin-button-up" tabindex="0" aria-label="Increase '+plainLabel+' by one step"></button>' +
+    '<button type="button" class="spin-button spin-button-down" tabindex="0" aria-label="Decrease '+plainLabel+' by one step"></button></div><input type="range" id="'+inputId+'" min="'+minVal+'" max="'+maxVal+'" step="'+stepVal+'" value="'+displayValue+'"></div>';
 }
 
 function updateEosParamsUI(){
@@ -47,52 +49,84 @@ function updateEosParamsUI(){
   }
   container.innerHTML=html;
 
-  // Wire up event listeners for dynamic EOS controls
+  // Wire up event listeners for dynamic EOS controls (mirrors static slider behavior)
   const rangeInputs = container.querySelectorAll('input[type="range"]');
   rangeInputs.forEach(sl => {
-    sl.addEventListener('input', () => { readParams(); if(simRunning) resetSim(); });
+    sl.addEventListener('input', () => { scheduleReadParams(); if(simRunning) resetSim(); });
   });
 
   // Wire up number inputs and spin buttons for dynamic EOS controls
   const groupIds = container.querySelectorAll('[id$="-wrapper"]');
   groupIds.forEach(wrapper => {
     const sliderId = wrapper.id.replace('-wrapper', '');
-    const numInput = document.getElementById(sliderId + '-num');
+    const numInput = document.getElementById(sliderId + '-input');
     if (!numInput) return;
-    const step = parseFloat(numInput.step || '0.01');
 
-    // Sync number input -> range slider
+    // Sync number input -> range slider (debounced, matching static slider behavior)
     numInput.addEventListener('input', () => {
       let val = parseFloat(numInput.value);
       if (!isNaN(val)) {
         val = Math.max(parseFloat(numInput.min), Math.min(parseFloat(numInput.max), val));
         numInput.value = Math.round(val * 100) / 100;
         const slider = document.getElementById(sliderId);
-        if (slider) { slider.value = numInput.value; readParams(); }
+        if (slider && !isNaN(parseFloat(slider.value))) { 
+          readParams(); // Immediate for EOS params since there's no drag scenario
+          slider.value = numInput.value; 
+        }
       }
     });
 
-    // Spin buttons
-    wrapper.querySelector('.spin-button-up').addEventListener('click', () => {
-      let val = parseFloat(numInput.value) + step;
-      val = Math.min(parseFloat(numInput.max), val);
-      numInput.value = Math.round(val * 100) / 100;
-      const slider = document.getElementById(sliderId);
-      if (slider) { slider.value = numInput.value; readParams(); }
+    // Spin buttons - mirror static slider behavior with debouncing
+    const syncSpinBtn = (direction) => {
+      let val = parseFloat(numInput.value);
+      if (!isNaN(val)) {
+        val += direction * step;
+        val = Math.max(parseFloat(numInput.min), Math.min(parseFloat(numInput.max), val));
+        numInput.value = Math.round(val * 100) / 100;
+        const slider = document.getElementById(sliderId);
+        if (slider && !isNaN(parseFloat(slider.value))) { 
+          readParams(); // Immediate for EOS params since there's no drag scenario  
+          slider.value = numInput.value; 
+        }
+      }
+    };
+
+    const step = parseFloat(numInput.step || '0.01');
+    
+    wrapper.querySelector('.spin-button-up').addEventListener('click', () => syncSpinBtn(1));
+    wrapper.querySelector('.spin-button-down').addEventListener('click', () => syncSpinBtn(-1));
+
+    // Keyboard support for spin buttons (Enter/Space) and arrow keys in number input  
+    [wrapper.querySelector('.spin-button-up'), wrapper.querySelector('.spin-button-down')].forEach((btn, idx) => {
+      btn.addEventListener('keydown', (e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && numInput !== document.activeElement) { 
+          // Only handle on spin buttons when they have focus, not number input  
+          e.preventDefault(); 
+          syncSpinBtn(idx === 0 ? 1 : -1); 
+        }
+      });
     });
 
-    wrapper.querySelector('.spin-button-down').addEventListener('click', () => {
-      let val = parseFloat(numInput.value) - step;
-      val = Math.max(parseFloat(numInput.min), val);
-      numInput.value = Math.round(val * 100) / 100;
-      const slider = document.getElementById(sliderId);
-      if (slider) { slider.value = numInput.value; readParams(); }
-    });
-
-    // Arrow key support in number input
     numInput.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowUp') { e.preventDefault(); wrapper.querySelector('.spin-button-up').click(); }
       else if (e.key === 'ArrowDown') { e.preventDefault(); wrapper.querySelector('.spin-button-down').click(); }
+    });
+
+    // Blur validation - restore slider value or clamp on invalid input  
+    numInput.addEventListener('blur', () => {
+      let val = parseFloat(numInput.value);
+      if (isNaN(val)) { 
+        const slider = document.getElementById(sliderId);
+        if (slider) numInput.value = Math.round(parseFloat(slider.value)*100)/100; 
+      } else {
+        val = Math.max(parseFloat(numInput.min), Math.min(parseFloat(numInput.max), val));
+        numInput.value = Math.round(val * 100) / 100;
+        const slider = document.getElementById(sliderId);
+        if (slider && !isNaN(parseFloat(slider.value))) { 
+          readParams(); // Immediate for EOS params since there's no drag scenario  
+          slider.value = numInput.value; 
+        }
+      }
     });
   });
 }
