@@ -206,8 +206,17 @@ if (overlay) {
 // Synchronize sliders with number inputs (accessible, performant)
 let readParamsDebounceTimer = null;
 const READ_PARAMS_DEBOUNCE_MS = 150;
+let _sliderInputsInitialized = false;
 
-function scheduleReadParams() {
+function scheduleReadParams(immediate = false) {
+  if (immediate) {
+    if (readParamsDebounceTimer) {
+      clearTimeout(readParamsDebounceTimer);
+      readParamsDebounceTimer = null;
+    }
+    readParams();
+    return;
+  }
   if (readParamsDebounceTimer) {
     clearTimeout(readParamsDebounceTimer);
   }
@@ -218,6 +227,9 @@ function scheduleReadParams() {
 }
 
 function initSliderInputs() {
+  if (_sliderInputsInitialized) return;
+  _sliderInputsInitialized = true;
+  
   const sliders = document.querySelectorAll('input[type="range"]');
   
   sliders.forEach(slider => {
@@ -292,6 +304,17 @@ function initSliderInputs() {
               downBtn.click();
             }
           });
+          
+          // Arrow key support in number input
+          numInput.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              upBtn.click();
+            } else if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              downBtn.click();
+            }
+          });
         }
       }
     } else {
@@ -308,12 +331,28 @@ function initSliderInputs() {
       }
     }
     
+    // Immediate feedback on drag start, then debounce
+    let isDragging = false;
+    
+    slider.addEventListener('mousedown', () => {
+      isDragging = true;
+    });
+    
     slider.addEventListener('input', () => {
       const numInput = document.getElementById(slider.id + '-input');
       if (numInput) {
         numInput.value = Math.round(parseFloat(slider.value) * 100) / 100;
       }
-      scheduleReadParams();
+      if (isDragging) {
+        scheduleReadParams(true); // Immediate first call
+        isDragging = false; // Subsequent calls will debounce
+      } else {
+        scheduleReadParams();
+      }
+    });
+    
+    slider.addEventListener('mouseup', () => {
+      isDragging = false;
     });
     
     const numInput = document.getElementById(slider.id + '-input');
