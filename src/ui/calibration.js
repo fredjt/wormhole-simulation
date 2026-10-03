@@ -46,7 +46,7 @@ function updateEosParamsUI(){
   // Ensure all EOS parameter defaults exist before rendering (prevents undefined errors on model switch)
   if(eosModel==='barotropic') eosParams.omega=eosParams.omega??-0.58;
   else if(eosModel==='phantom'){eosParams.Ap=eosParams.Ap??1;eosParams.alpha_p=eosParams.alpha_p??1;eosParams.n=eosParams.n??5;}
-  else if(eosModel==='chaplygin') eosParams.Ac=eosParams.Ac??2;
+  else if(eosModel==='chaplygin'){eosParams.Ac=eosParams.Ac??2; eosParams.alpha_c=eosParams.alpha_c??1;}
   else if(eosModel==='cosmicChap'){eosParams.Agc=eosParams.Agc??2;eosParams.n_gc=eosParams.n_gc??3;}
   else if(eosModel==='modCosmicChap'){eosParams.Amcc=eosParams.Amcc??2;eosParams.m_mcc=eosParams.m_mcc??3;}
 
