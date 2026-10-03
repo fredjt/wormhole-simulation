@@ -63,46 +63,52 @@ function updateEosParamsUI(){
     if (!numInput) return;
 
     // Sync number input -> range slider (debounced, matching static slider behavior)
+    const syncToSlider = () => {
+      numInput.value = Math.round(parseFloat(numInput.value)*100)/100;
+      const slider = document.getElementById(sliderId);
+      if (slider) { 
+        scheduleReadParams();
+        slider.value = numInput.value; 
+      }
+    };
+
     numInput.addEventListener('input', () => {
       let val = parseFloat(numInput.value);
       if (!isNaN(val)) {
         val = Math.max(parseFloat(numInput.min), Math.min(parseFloat(numInput.max), val));
         numInput.value = Math.round(val * 100) / 100;
-        const slider = document.getElementById(sliderId);
-        if (slider && !isNaN(parseFloat(slider.value))) { 
-          readParams(); // Immediate for EOS params since there's no drag scenario
-          slider.value = numInput.value; 
-        }
+        syncToSlider();
       }
     });
-
+    
     // Spin buttons - mirror static slider behavior with debouncing
-    const syncSpinBtn = (direction) => {
-      let val = parseFloat(numInput.value);
-      if (!isNaN(val)) {
-        val += direction * step;
-        val = Math.max(parseFloat(numInput.min), Math.min(parseFloat(numInput.max), val));
-        numInput.value = Math.round(val * 100) / 100;
-        const slider = document.getElementById(sliderId);
-        if (slider && !isNaN(parseFloat(slider.value))) { 
-          readParams(); // Immediate for EOS params since there's no drag scenario  
-          slider.value = numInput.value; 
-        }
-      }
-    };
-
     const step = parseFloat(numInput.step || '0.01');
     
-    wrapper.querySelector('.spin-button-up').addEventListener('click', () => syncSpinBtn(1));
-    wrapper.querySelector('.spin-button-down').addEventListener('click', () => syncSpinBtn(-1));
+    [wrapper.querySelector('.spin-button-up'), wrapper.querySelector('.spin-button-down')].forEach((btn, idx) => {
+      btn.addEventListener('click', () => {
+        let val = parseFloat(numInput.value);
+        if (!isNaN(val)) {
+          val += (idx === 0 ? 1 : -1) * step;
+          val = Math.max(parseFloat(numInput.min), Math.min(parseFloat(numInput.max), val));
+          numInput.value = Math.round(val * 100) / 100;
+          syncToSlider();
+        }
+      });
+    });
 
-    // Keyboard support for spin buttons (Enter/Space) and arrow keys in number input  
+    // Keyboard support for spin buttons (Enter/Space) and arrow keys in number input
     [wrapper.querySelector('.spin-button-up'), wrapper.querySelector('.spin-button-down')].forEach((btn, idx) => {
       btn.addEventListener('keydown', (e) => {
         if ((e.key === 'Enter' || e.key === ' ') && numInput !== document.activeElement) { 
           // Only handle on spin buttons when they have focus, not number input  
-          e.preventDefault(); 
-          syncSpinBtn(idx === 0 ? 1 : -1); 
+          e.preventDefault();
+          let val = parseFloat(numInput.value);
+          if (!isNaN(val)) {
+            val += (idx === 0 ? 1 : -1) * step;
+            val = Math.max(parseFloat(numInput.min), Math.min(parseFloat(numInput.max), val));
+            numInput.value = Math.round(val * 100) / 100;
+            syncToSlider();
+          }
         }
       });
     });
@@ -112,7 +118,7 @@ function updateEosParamsUI(){
       else if (e.key === 'ArrowDown') { e.preventDefault(); wrapper.querySelector('.spin-button-down').click(); }
     });
 
-    // Blur validation - restore slider value or clamp on invalid input  
+    // Blur validation - restore slider value or clamp on invalid input
     numInput.addEventListener('blur', () => {
       let val = parseFloat(numInput.value);
       if (isNaN(val)) { 
@@ -121,11 +127,7 @@ function updateEosParamsUI(){
       } else {
         val = Math.max(parseFloat(numInput.min), Math.min(parseFloat(numInput.max), val));
         numInput.value = Math.round(val * 100) / 100;
-        const slider = document.getElementById(sliderId);
-        if (slider && !isNaN(parseFloat(slider.value))) { 
-          readParams(); // Immediate for EOS params since there's no drag scenario  
-          slider.value = numInput.value; 
-        }
+        syncToSlider();
       }
     });
   });
