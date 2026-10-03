@@ -132,10 +132,17 @@
     </ul>
   </div>
 </div>
+
 <script>
-  document.getElementById("helpModal").style.display="none";
-  document.getElementById("helpBtn").addEventListener("click", function() {
-    document.getElementById("helpModal").classList.add("active");
-  });
+document.addEventListener("DOMContentLoaded", function() {
+  var modal = document.getElementById("helpModal");
+  var btn = document.getElementById("helpBtn");
+  if (modal && btn) {
+    modal.style.display = "none";
+    btn.addEventListener("click", function() {
+      modal.classList.add("active");
+    });
+  }
+});
 </script>
 </body>
