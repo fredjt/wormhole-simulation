@@ -9,7 +9,7 @@ function readParams(){
   autoStop=g('chkAutoStop')?.checked||false;
   switch(eosModel){
     case'barotropic':eosParams.omega=parseFloat(g('sliderOmega')?.value||-0.58);break;
-    case'phantom':eosParams.Ap=parseFloat(g('sliderAp')?.value||0.5);eosParams.alpha_p=parseFloat(g('sliderAlphaP')?.value||1);break;
+    case'phantom':eosParams.Ap=parseFloat(g('sliderAp')?.value||0.5);eosParams.alpha_p=parseFloat(g('sliderAlphaP')?.value||1);eosParams.n=parseFloat(g('sliderN')?.value||5);break;
     case'chaplygin':eosParams.Ac=parseFloat(g('sliderAc')?.value||2);eosParams.alpha_c=parseFloat(g('sliderAlphaC')?.value||1);break;
     case'cosmicChap':eosParams.Agc=parseFloat(g('sliderAgc')?.value||2);eosParams.n_gc=parseFloat(g('sliderNgc')?.value||3);break;
     case'modCosmicChap':eosParams.Amcc=parseFloat(g('sliderAmcc')?.value||2);eosParams.m_mcc=parseFloat(g('sliderMmcc')?.value||3);break;
