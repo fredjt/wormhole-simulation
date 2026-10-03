@@ -7,12 +7,20 @@ function readParams(){
   eosModel=g('eosSelect').value;
   speedMultiplier=parseFloat(g('sliderSpeed')?.value||'1.0');
   autoStop=g('chkAutoStop')?.checked||false;
+
+  // Helper: safely parse slider value with fallback default (avoids NaN propagation)
+  const safeParse = (id, def) => {
+    const el = g(id);
+    if (!el || isNaN(parseFloat(el.value))) return def; // use explicit default directly
+    return parseFloat(el.value);
+  };
+
   switch(eosModel){
-    case'barotropic':eosParams.omega=parseFloat(g('sliderOmega')?.value||-0.58);break;
-    case'phantom':eosParams.Ap=parseFloat(g('sliderAp')?.value||0.5);eosParams.alpha_p=parseFloat(g('sliderAlphaP')?.value||1);eosParams.n=parseFloat(g('sliderN')?.value||5);break;
-    case'chaplygin':eosParams.Ac=parseFloat(g('sliderAc')?.value||2);eosParams.alpha_c=parseFloat(g('sliderAlphaC')?.value||1);break;
-    case'cosmicChap':eosParams.Agc=parseFloat(g('sliderAgc')?.value||2);eosParams.n_gc=parseFloat(g('sliderNgc')?.value||3);break;
-    case'modCosmicChap':eosParams.Amcc=parseFloat(g('sliderAmcc')?.value||2);eosParams.m_mcc=parseFloat(g('sliderMmcc')?.value||3);break;
+    case'barotropic':eosParams.omega=safeParse('sliderOmega',-0.58); break;
+    case'phantom': eosParams.Ap=safeParse('sliderAp',1); eosParams.alpha_p=safeParse('sliderAlphaP',1); eosParams.n=safeParse('sliderN',5); break;
+    case'chaplygin':eosParams.Ac=safeParse('sliderAc',2); eosParams.alpha_c=safeParse('sliderAlphaC',1); break;
+    case'cosmicChap':eosParams.Agc=safeParse('sliderAgc',2); eosParams.n_gc=safeParse('sliderNgc',3); break;
+    case'modCosmicChap':eosParams.Amcc=safeParse('sliderAmcc',2); eosParams.m_mcc=safeParse('sliderMmcc',3); break;
   }
   if(g('valM'))g('valM').textContent=M_val.toFixed(2);
   if(g('valA'))g('valA').textContent=A_val.toFixed(2);
@@ -34,6 +42,14 @@ function makeEosRow(labelHtml, inputId, minVal, maxVal, stepVal, displayValue){
 function updateEosParamsUI(){
   const container=document.getElementById('eosParams');
   let html='';
+
+  // Ensure all EOS parameter defaults exist before rendering (prevents undefined errors on model switch)
+  if(eosModel==='barotropic') eosParams.omega=eosParams.omega??-0.58;
+  else if(eosModel==='phantom'){eosParams.Ap=eosParams.Ap??1;eosParams.alpha_p=eosParams.alpha_p??1;eosParams.n=eosParams.n??5;}
+  else if(eosModel==='chaplygin') eosParams.Ac=eosParams.Ac??2;
+  else if(eosModel==='cosmicChap'){eosParams.Agc=eosParams.Agc??2;eosParams.n_gc=eosParams.n_gc??3;}
+  else if(eosModel==='modCosmicChap'){eosParams.Amcc=eosParams.Amcc??2;eosParams.m_mcc=eosParams.m_mcc??3;}
+
   switch(eosModel){
     case'barotropic':html+=makeEosRow('&omega;','sliderOmega','-1.5','0','0.01',eosParams.omega.toFixed(2));break;
     case'phantom':
@@ -149,7 +165,7 @@ function updateHorizonInfo(){
 
 function calibrateAtA0(){const f_a0=lapseF(a0_val,M_val,A_val,r0_val);if(f_a0<=0)return;switch(eosModel){case'barotropic':eosParams.omega=calibrateOmega(a0_val,M_val,A_val,r0_val);break;case'phantom':eosParams.Ap=calibratePhantomParams(a0_val,M_val,A_val,r0_val,eosParams);break;case'chaplygin':eosParams.Ac=calibrateChaplyginParams(a0_val,M_val,A_val,r0_val);break;case'cosmicChap':eosParams.Agc=calibrateCosmicChap(a0_val,M_val,A_val,r0_val);break;case'modCosmicChap':eosParams.Amcc=calibrateModCosmicChap(a0_val,M_val,A_val,r0_val);break;}calibrated=true;updateEosParamsUI();resetSim();}
 
-function initSim(){const f_a0=lapseF(a0_val,M_val,A_val,r0_val);if(f_a0<=0)return;let deltaAPct=parseFloat(document.getElementById('sliderDeltaA')?.value || '0.01');if(document.getElementById('chkSmallPerturb').checked)deltaAPct=0.01;v_current=parseFloat(document.getElementById('sliderV0')?.value || '-0.1');tau=0;a_current=a0_val*(1+deltaAPct/100);timeHistory=[{tau:0,a:a_current,v:v_current}];phaseHistory=[{a:a_current,v:v_current}];calibrated=true;}
+function initSim(){readParams();const f_a0=lapseF(a0_val,M_val,A_val,r0_val);if(f_a0<=0)return;let deltaAPct=parseFloat(document.getElementById('sliderDeltaA')?.value || '0.01');if(document.getElementById('chkSmallPerturb').checked)deltaAPct=0.01;v_current=parseFloat(document.getElementById('sliderV0')?.value || '-0.1');tau=0;a_current=a0_val*(1+deltaAPct/100);timeHistory=[{tau:0,a:a_current,v:v_current}];phaseHistory=[{a:a_current,v:v_current}];calibrated=true;}
 
 function resetSim(){simRunning=false;simPaused=false;readParams();initSim();}
 
