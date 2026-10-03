@@ -26,3 +26,4 @@ config/
 .local/
 .config/
 .unsloth_attachments/
+.unsloth_tool_output/

@@ -7,17 +7,19 @@ function readParams(){
   eosModel=g('eosSelect').value;
   speedMultiplier=parseFloat(g('sliderSpeed')?.value||'1.0');
   autoStop=g('chkAutoStop')?.checked||false;
+  // Helper: safely parse slider value with fallback default
+  const safeParse = (id, def) => {
+    const el = g(id);
+    if (!el || isNaN(parseFloat(el.value))) return def; // use explicit default directly
+    return parseFloat(el.value);
+  };
+
   switch(eosModel){
-    case'barotropic':if(!isNaN(parseFloat(g('sliderOmega')?.value))) eosParams.omega=parseFloat(g('sliderOmega').value); break;
-    case'phantom':eosParams.Ap=eosParams.Ap??1; if(!isNaN(parseFloat(g('sliderAp')?.value))) eosParams.Ap=parseFloat(g('sliderAp').value);
-      eosParams.alpha_p=eosParams.alpha_p??1; if(!isNaN(parseFloat(g('sliderAlphaP')?.value))) eosParams.alpha_p=parseFloat(g('sliderAlphaP').value); 
-      eosParams.n=eosParams.n??5; if(!isNaN(parseFloat(g('sliderN')?.value))) eosParams.n=parseFloat(g('sliderN').value); break;
-    case'chaplygin':eosParams.Ac=eosParams.Ac??2; if(!isNaN(parseFloat(g('sliderAc')?.value))) eosParams.Ac=parseFloat(g('sliderAc').value);
-      eosParams.alpha_c=eosParams.alpha_c??1; if(!isNaN(parseFloat(g('sliderAlphaC')?.value))) eosParams.alpha_c=parseFloat(g('sliderAlphaC').value); break;
-    case'cosmicChap':eosParams.Agc=eosParams.Agc??2; if(!isNaN(parseFloat(g('sliderAgc')?.value))) eosParams.Agc=parseFloat(g('sliderAgc').value);
-      eosParams.n_gc=eosParams.n_gc??3; if(!isNaN(parseFloat(g('sliderNgc')?.value))) eosParams.n_gc=parseFloat(g('sliderNgc').value); break;
-    case'modCosmicChap':eosParams.Amcc=eosParams.Amcc??2; if(!isNaN(parseFloat(g('sliderAmcc')?.value))) eosParams.Amcc=parseFloat(g('sliderAmcc').value);
-      eosParams.m_mcc=eosParams.m_mcc??3; if(!isNaN(parseFloat(g('sliderMmcc')?.value))) eosParams.m_mcc=parseFloat(g('sliderMmcc').value); break;
+    case'barotropic':eosParams.omega=safeParse('sliderOmega',-0.58); break;
+    case'phantom':eosParams.Ap=safeParse('sliderAp',1); eosParams.alpha_p=safeParse('sliderAlphaP',1); eosParams.n=safeParse('sliderN',5); break;
+    case'chaplygin':eosParams.Ac=safeParse('sliderAc',2); eosParams.alpha_c=safeParse('sliderAlphaC',1); break;
+    case'cosmicChap':eosParams.Agc=safeParse('sliderAgc',2); eosParams.n_gc=safeParse('sliderNgc',3); break;
+    case'modCosmicChap':eosParams.Amcc=safeParse('sliderAmcc',2); eosParams.m_mcc=safeParse('sliderMmcc',3); break;
   }
   if(g('valM'))g('valM').textContent=M_val.toFixed(2);
   if(g('valA'))g('valA').textContent=A_val.toFixed(2);
@@ -76,12 +78,19 @@ function updateEosParamsUI(){
 
     // Sync number input -> range slider (debounced, matching static slider behavior)
     const syncToSlider = () => {
-      numInput.value = Math.round(parseFloat(numInput.value)*100)/100;
-      const slider = document.getElementById(sliderId);
-      if (slider) { 
-        // Update slider FIRST so readParams captures current values from DOM
-        slider.value = numInput.value; 
-        scheduleReadParams();
+      let val = parseFloat(numInput.value);
+      if (!isNaN(val)) { 
+        numInput.value = Math.round(val*100)/100;
+        const slider = document.getElementById(sliderId);
+        if (slider) { 
+          // Update slider FIRST so readParams captures current values from DOM
+          slider.value = numInput.value; 
+          scheduleReadParams();
+        }
+      } else {
+        // Restore valid value on invalid input - mirror blur handler behavior immediately
+        const slider = document.getElementById(sliderId);
+        if (slider) { numInput.value = Math.round(parseFloat(slider.value)*100)/100; }
       }
     };
 
@@ -138,6 +147,7 @@ function updateEosParamsUI(){
         const slider = document.getElementById(sliderId);
         if (slider) numInput.value = Math.round(parseFloat(slider.value)*100)/100; 
       } else {
+        // Clamp to valid range and propagate to slider + readParams
         val = Math.max(parseFloat(numInput.min), Math.min(parseFloat(numInput.max), val));
         numInput.value = Math.round(val * 100) / 100;
         syncToSlider();
@@ -161,7 +171,7 @@ function updateHorizonInfo(){
 
 function calibrateAtA0(){const f_a0=lapseF(a0_val,M_val,A_val,r0_val);if(f_a0<=0)return;switch(eosModel){case'barotropic':eosParams.omega=calibrateOmega(a0_val,M_val,A_val,r0_val);break;case'phantom':eosParams.Ap=calibratePhantomParams(a0_val,M_val,A_val,r0_val,eosParams);break;case'chaplygin':eosParams.Ac=calibrateChaplyginParams(a0_val,M_val,A_val,r0_val);break;case'cosmicChap':eosParams.Agc=calibrateCosmicChap(a0_val,M_val,A_val,r0_val);break;case'modCosmicChap':eosParams.Amcc=calibrateModCosmicChap(a0_val,M_val,A_val,r0_val);break;}calibrated=true;updateEosParamsUI();resetSim();}
 
-function initSim(){const f_a0=lapseF(a0_val,M_val,A_val,r0_val);if(f_a0<=0)return;let deltaAPct=parseFloat(document.getElementById('sliderDeltaA')?.value || '0.01');if(document.getElementById('chkSmallPerturb').checked)deltaAPct=0.01;v_current=parseFloat(document.getElementById('sliderV0')?.value || '-0.1');tau=0;a_current=a0_val*(1+deltaAPct/100);timeHistory=[{tau:0,a:a_current,v:v_current}];phaseHistory=[{a:a_current,v:v_current}];calibrated=true;}
+function initSim(){readParams();const f_a0=lapseF(a0_val,M_val,A_val,r0_val);if(f_a0<=0)return;let deltaAPct=parseFloat(document.getElementById('sliderDeltaA')?.value || '0.01');if(document.getElementById('chkSmallPerturb').checked)deltaAPct=0.01;v_current=parseFloat(document.getElementById('sliderV0')?.value || '-0.1');tau=0;a_current=a0_val*(1+deltaAPct/100);timeHistory=[{tau:0,a:a_current,v:v_current}];phaseHistory=[{a:a_current,v:v_current}];calibrated=true;}
 
 function resetSim(){simRunning=false;simPaused=false;readParams();initSim();}
 
