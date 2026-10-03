@@ -8,8 +8,56 @@
 
     <!-- Three.js loaded via CDN (external, not bundled) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<link rel="stylesheet" href="./css/style.css">
+<link rel="stylesheet" href="./css/style.css"><link rel="stylesheet" href="./css/help.css">
     <script type="module" src="./src/main.js?v=1790984931"></script>
+<!-- Help Modal -->
+<div id="helpModal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <span class="close-modal" onclick="document.getElementById('helpModal').style.display='none'">&times;</span>
+    <h2>🐛 Wormhole Simulation — How to Read This</h2>
+    
+    <h3>What You're Looking At</h3>
+    <p>This simulates a <strong>wormhole throat</strong> — a tunnel connecting two regions of spacetime. Think of it like a rubber band (the throat) stretching between two universes.</p>
+    
+    <h3>The Four Energy Conditions (Red Bars)</h3>
+    <p><strong>These are always red for wormholes, and that's OK!</strong></p>
+    <ul>
+      <li>Normal matter satisfies these conditions</li>
+      <li>Wormholes require <em>exotic matter</em> (negative energy density)</li>
+      <li>This is a proven requirement — you can't have a traversable wormhole without it</li>
+    </ul>
+    
+    <h3>The STABLE Badge</h3>
+    <p><strong>This is different from energy conditions!</strong></p>
+    <ul>
+      <li><span style="color:green">STABLE (green)</span> = The throat bounces back when pushed (like a spring)</li>
+      <li><span style="color:red">UNSTABLE</span> = The throat collapses or flies apart when pushed</li>
+    </ul>
+    
+    <h3>Parameters Explained</h3>
+    <table class="help-table">
+      <tr><td><strong>M</strong></td><td>Mass of the black hole seed</td></tr>
+      <tr><td><strong>A</strong></td><td>String cloud strength (matter around the throat)</td></tr>
+      <tr><td><strong>r₀</strong></td><td>Regulator scale (how "smeared out" the singularity is)</td></tr>
+      <tr><td><strong>a₀</strong></td><td>Throat radius — where the wormhole is narrowest</td></tr>
+    </table>
+    
+    <h3>EOS Models</h3>
+    <p>The Equation of State describes what kind of matter fills the throat:</p>
+    <ul>
+      <li><strong>Phantom</strong> (default) — Can be stable with right parameters</li>
+      <li><strong>Chaplygin</strong> — Cosmological model, may have stable branches</li>
+      <li><strong>Barotropic</strong> — Simplest model, usually unstable for this geometry</li>
+    </ul>
+    
+    <h3>Troubleshooting</h3>
+    <ul>
+      <li>If UNSTABLE: Try increasing <code>a₀</code> or switching EOS models</li>
+      <li>If simulation runs too fast: Lower the speed multiplier</li>
+      <li>If page looks broken: Hard refresh (Ctrl+Shift+R)</li>
+    </ul>
+  </div>
+</div>
 </head>
 <body>
 
