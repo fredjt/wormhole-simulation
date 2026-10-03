@@ -203,65 +203,179 @@ if (overlay) {
 </script>
 
 <script>
-// Synchronize sliders with number inputs
+// Synchronize sliders with number inputs (accessible, performant)
+let readParamsDebounceTimer = null;
+const READ_PARAMS_DEBOUNCE_MS = 150;
+let _sliderInputsInitialized = false;
+
+function scheduleReadParams(immediate = false) {
+  if (immediate) {
+    if (readParamsDebounceTimer) {
+      clearTimeout(readParamsDebounceTimer);
+      readParamsDebounceTimer = null;
+    }
+    readParams();
+    return;
+  }
+  if (readParamsDebounceTimer) {
+    clearTimeout(readParamsDebounceTimer);
+  }
+  readParamsDebounceTimer = setTimeout(() => {
+    readParams();
+    readParamsDebounceTimer = null;
+  }, READ_PARAMS_DEBOUNCE_MS);
+}
+
 function initSliderInputs() {
+  if (_sliderInputsInitialized) return;
+  _sliderInputsInitialized = true;
+  
   const sliders = document.querySelectorAll('input[type="range"]');
   
   sliders.forEach(slider => {
-    // Create or find the corresponding number input
-    let numInput = document.getElementById(slider.id + '-input');
+    let wrapper = document.getElementById(slider.id + '-wrapper');
     
-    if (!numInput) {
-      // Find the parent slider-row and add a number input
+    if (!wrapper) {
       const row = slider.closest('.slider-row');
       if (row) {
+        // Insert wrapper AFTER the label, not inside it
         const label = row.querySelector('label');
         if (label) {
-          numInput = document.createElement('input');
+          wrapper = document.createElement('div');
+          wrapper.id = slider.id + '-wrapper';
+          wrapper.className = 'number-input-group';
+          
+          const numInput = document.createElement('input');
           numInput.type = 'number';
           numInput.id = slider.id + '-input';
-          numInput.className = 'slider-input';
+          numInput.className = 'wormhole-number-input';
           numInput.min = slider.min;
           numInput.max = slider.max;
           numInput.step = slider.step || '0.01';
-          numInput.value = slider.value;
+          numInput.value = parseFloat(slider.value);
+          numInput.setAttribute('aria-label', slider.title || 'Parameter value');
           
-          // Insert before the range input
-          label.appendChild(numInput);
+          const upBtn = document.createElement('button');
+          upBtn.type = 'button';
+          upBtn.className = 'spin-button spin-button-up';
+          upBtn.setAttribute('aria-label', 'Increase value by one step');
+          upBtn.tabIndex = 0;
+          
+          const downBtn = document.createElement('button');
+          downBtn.type = 'button';
+          downBtn.className = 'spin-button spin-button-down';
+          downBtn.setAttribute('aria-label', 'Decrease value by one step');
+          downBtn.tabIndex = 0;
+          
+          wrapper.appendChild(numInput);
+          wrapper.appendChild(upBtn);
+          wrapper.appendChild(downBtn);
+          
+          row.insertBefore(wrapper, slider);
+          
+          const step = parseFloat(slider.step || 0.01);
+          
+          upBtn.addEventListener('click', () => {
+            let val = parseFloat(numInput.value) + step;
+            val = Math.min(parseFloat(slider.max), val);
+            numInput.value = Math.round(val * 100) / 100;
+            slider.value = numInput.value;
+            scheduleReadParams();
+          });
+          
+          downBtn.addEventListener('click', () => {
+            let val = parseFloat(numInput.value) - step;
+            val = Math.max(parseFloat(slider.min), val);
+            numInput.value = Math.round(val * 100) / 100;
+            slider.value = numInput.value;
+            scheduleReadParams();
+          });
+          
+          upBtn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              upBtn.click();
+            }
+          });
+          
+          downBtn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              downBtn.click();
+            }
+          });
+          
+          // Arrow key support in number input
+          numInput.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              upBtn.click();
+            } else if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              downBtn.click();
+            }
+          });
+        }
+      }
+    } else {
+      const numInput = wrapper.querySelector('input[type="number"]');
+      if (numInput) {
+        numInput.min = slider.min;
+        numInput.max = slider.max;
+        numInput.step = slider.step || '0.01';
+        const currentVal = parseFloat(numInput.value);
+        const sliderVal = parseFloat(slider.value);
+        if (Math.abs(currentVal - sliderVal) > 0.001) {
+          numInput.value = Math.round(sliderVal * 100) / 100;
         }
       }
     }
     
+    // Immediate feedback on drag start, then debounce
+    let isDragging = false;
+    
+    slider.addEventListener('mousedown', () => {
+      isDragging = true;
+    });
+    
+    slider.addEventListener('input', () => {
+      const numInput = document.getElementById(slider.id + '-input');
+      if (numInput) {
+        numInput.value = Math.round(parseFloat(slider.value) * 100) / 100;
+      }
+      if (isDragging) {
+        scheduleReadParams(true); // Immediate first call
+        isDragging = false; // Subsequent calls will debounce
+      } else {
+        scheduleReadParams();
+      }
+    });
+    
+    slider.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+    
+    const numInput = document.getElementById(slider.id + '-input');
     if (numInput) {
-      // Sync: slider -> number input
-      slider.addEventListener('input', () => {
-        numInput.value = parseFloat(slider.value).toFixed(2);
-        readParams();
-        if (simRunning) resetSim();
-      });
-      
-      // Sync: number input -> slider
       numInput.addEventListener('input', () => {
         let val = parseFloat(numInput.value);
         if (!isNaN(val)) {
-          // Clamp to range
           val = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), val));
-          slider.value = val;
-          numInput.value = val.toFixed(2);
-          readParams();
-          if (simRunning) resetSim();
+          numInput.value = Math.round(val * 100) / 100;
+          slider.value = numInput.value;
+          scheduleReadParams();
         }
       });
       
-      // Handle blur - validate and format
       numInput.addEventListener('blur', () => {
         let val = parseFloat(numInput.value);
         if (isNaN(val)) {
           numInput.value = slider.value;
         } else {
           val = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), val));
-          numInput.value = val.toFixed(2);
-          slider.value = val;
+          numInput.value = Math.round(val * 100) / 100;
+          slider.value = numInput.value;
+          scheduleReadParams();
         }
       });
     }
