@@ -1,3 +1,15 @@
+// Unified Vpp computation — single source of truth for stability determination.
+// Uses numerical second derivative of the effective potential via central differences,
+// which correctly accounts for how sigma changes when 'a' is perturbed (including
+// EOS-model-specific behavior in computeSigmaFromEOS). This avoids discrepancies that
+// arise from using analytical formulas (barotropicVpp) or pre-computed sigma0 values.
+function computeVpp(a0_val_param) {
+  const f = lapseF(a0_val_param, M_val, A_val, r0_val);
+  if (!isFinite(f)) return NaN;
+  const s0 = Math.sqrt(Math.abs(f)) / (2 * Math.PI * a0_val_param);
+  return effPotD2(a0_val_param, a0_val_param, s0, eosModel, eosParams);
+}
+
 // Effective potential and stability analysis for thin-shell wormholes
 // Based on arXiv:2610.00131 (Zhong et al.)
 
@@ -107,6 +119,6 @@ function calibrateModCosmicChap(a0, M, A, r0) {
   return bestAmcc;
 }
 
-export { effPot, effPotPrime, effPotD2, calibrateOmega, barotropicVpp, 
+export { computeVpp, effPot, effPotPrime, effPotD2, calibrateOmega, barotropicVpp, 
          calibratePhantomParams, phantomVpp, calibrateChaplyginParams,
          calibrateCosmicChap, calibrateModCosmicChap };
