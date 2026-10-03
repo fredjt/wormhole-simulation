@@ -69,7 +69,17 @@ function init() {
 
 // Start the app when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  // Setup help button
+var helpBtn = document.getElementById("helpBtn");
+var helpModal = document.getElementById("helpModal");
+if (helpBtn && helpModal) {
+  helpModal.style.display = "none";
+  helpBtn.addEventListener("click", function() {
+    helpModal.classList.add("active");
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
 }
