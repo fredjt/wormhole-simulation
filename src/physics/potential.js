@@ -3,8 +3,9 @@
 // which correctly accounts for how sigma changes when 'a' is perturbed (including
 // EOS-model-specific behavior in computeSigmaFromEOS).
 function computeVpp(a0_val_param) {
+  const f = lapseF(a0_val_param, M_val, A_val, r0_val);
   // Guard against invalid inputs: non-positive throat radius or non-finite lapse.
-  if (!isFinite(f = lapseF(a0_val_param, M_val, A_val, r0_val)) || a0_val_param <= 0)
+  if (!isFinite(f) || a0_val_param <= 0)
     return NaN;
   // σ must be negative for exotic matter (thin-shell wormhole convention).
   const s0 = -Math.sqrt(Math.abs(f)) / (2 * Math.PI * a0_val_param);
