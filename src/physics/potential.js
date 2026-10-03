@@ -129,6 +129,11 @@ function calibrateModCosmicChap(a0, M, A, r0) {
   return bestAmcc;
 }
 
-export { computeVpp, computeVppOptimized, effPot, effPotPrime, effPotD2, calibrateOmega,
-         calibratePhantomParams, calibrateChaplyginParams,
+// Export list: core functions first (computeVpp + V(a) helpers), then calibration.
+// barotropicVpp and phantomVpp remain exported for analytical reference and test coverage.
+export { computeVpp, computeVppOptimized,
+         effPot, effPotPrime, effPotD2,
+         calibrateOmega, barotropicVpp,
+         calibratePhantomParams, phantomVpp,
+         calibrateChaplyginParams,
          calibrateCosmicChap, calibrateModCosmicChap };
