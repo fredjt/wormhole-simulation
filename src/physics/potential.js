@@ -47,14 +47,15 @@ function calibratePhantomParams(a0, M, A, r0, params) {
   return w_eq / (-2 - w_eq);
 }
 
-// Phantom V'': V''_P = F'' + F'/a₀ - (F')²/F + n(a₀F' + 2F)/a₀²  [Eq. B.13]
+// Phantom V'': Numerical second derivative of effective potential
 function phantomVpp(a0, M, A, r0, params) {
-  const f = lapseF(a0, M, A, r0);
-  if (f <= 0) return NaN;
-  const fp = lapseFPrime(a0, M, A, r0);
-  const fpp = lapseFDblPrime(a0, M, A, r0);
-  const n = params ? (params.n || 1) : 1; // default n=1 for phantom
-  return fpp + fp / a0 - (fp * fp) / f + n * (a0 * fp + 2 * f) / (a0 * a0);
+  const s0 = -Math.sqrt(Math.max(lapseF(a0, M, A, r0), 0)) / (2 * Math.PI * a0);
+  // Use numerical second derivative for accuracy with variable EOS
+  const h = 1e-5;
+  const Vpp = (effPot(a0 + h, a0, s0, 'phantom', params) 
+             - 2 * effPot(a0, a0, s0, 'phantom', params) 
+             + effPot(a0 - h, a0, s0, 'phantom', params)) / (h * h);
+  return Vpp;
 }
 
 // Variable Chaplygin: numerical calibration for Ac
