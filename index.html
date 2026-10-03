@@ -13,7 +13,7 @@
 </head>
 <body>
   <div style="display:flex;justify-content:flex-end;padding:10px;">
-    <button id="helpBtn" class="help-btn" onclick="document.getElementById('helpModal').style.display='flex'">❓ Help</button>
+    <button id="helpBtn" class="help-btn" onclick="document.getElementById('helpModal').classList.add('active')">❓ Help</button>
   </div>
 
 <div id="controls">
@@ -87,9 +87,10 @@
 </div>
 
 <!-- Help Modal -->
+<!-- Help Modal -->
 <div id="helpModal" class="modal">
   <div class="modal-content">
-    <span class="close-modal" onclick="document.getElementById('helpModal').style.display='none'">&times;</span>
+    <span class="close-modal" onclick="document.getElementById('helpModal').classList.remove('active')">&times;</span>
     <h2>🐛 Wormhole Simulation — How to Read This</h2>
     
     <h3>What You're Looking At</h3>
