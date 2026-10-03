@@ -201,4 +201,73 @@ if (overlay) {
   };
 }
 </script>
+
+// Synchronize sliders with number inputs
+function initSliderInputs() {
+  const sliders = document.querySelectorAll('input[type="range"]');
+  
+  sliders.forEach(slider => {
+    // Create or find the corresponding number input
+    let numInput = document.getElementById(slider.id + '-input');
+    
+    if (!numInput) {
+      // Find the parent slider-row and add a number input
+      const row = slider.closest('.slider-row');
+      if (row) {
+        const label = row.querySelector('label');
+        if (label) {
+          numInput = document.createElement('input');
+          numInput.type = 'number';
+          numInput.id = slider.id + '-input';
+          numInput.className = 'slider-input';
+          numInput.min = slider.min;
+          numInput.max = slider.max;
+          numInput.step = slider.step || '0.01';
+          numInput.value = slider.value;
+          
+          // Insert before the range input
+          label.appendChild(numInput);
+        }
+      }
+    }
+    
+    if (numInput) {
+      // Sync: slider -> number input
+      slider.addEventListener('input', () => {
+        numInput.value = parseFloat(slider.value).toFixed(2);
+        readParams();
+        if (simRunning) resetSim();
+      });
+      
+      // Sync: number input -> slider
+      numInput.addEventListener('input', () => {
+        let val = parseFloat(numInput.value);
+        if (!isNaN(val)) {
+          // Clamp to range
+          val = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), val));
+          slider.value = val;
+          numInput.value = val.toFixed(2);
+          readParams();
+          if (simRunning) resetSim();
+        }
+      });
+      
+      // Handle blur - validate and format
+      numInput.addEventListener('blur', () => {
+        let val = parseFloat(numInput.value);
+        if (isNaN(val)) {
+          numInput.value = slider.value;
+        } else {
+          val = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), val));
+          numInput.value = val.toFixed(2);
+          slider.value = val;
+        }
+      });
+    }
+  });
+}
+
+// Call when DOM is ready
+document.addEventListener('DOMContentLoaded', initSliderInputs);
+
 </body>
