@@ -1,3 +1,5 @@
+// Import getFPrimeInterp from lapse module
+import { getFPrimeInterp } from './lapse.js';
 // Effective potential and stability analysis for thin-shell wormholes
 // Based on arXiv:2610.00131 (Zhong et al.)
 
