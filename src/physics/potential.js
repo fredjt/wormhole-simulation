@@ -35,13 +35,16 @@ function barotropicVpp(a0, M, A, r0) {
   return fpp + fp / a0 - (fp * fp) / f;
 }
 
-// Phantom calibration: Ap = -(a₀ⁿ(a₀F' + 2F))/(4F)  [Eq. B.11]
+// Phantom calibration: Solve V'(a₀)=0 for Ap
 function calibratePhantomParams(a0, M, A, r0, params) {
   const f = lapseF(a0, M, A, r0);
   if (f <= 0) return NaN;
   const fp = lapseFPrime(a0, M, A, r0);
-  const n = params ? (params.n || 1) : 1; // default n=1 for phantom
-  return -(Math.pow(a0, n) * (a0 * fp + 2 * f)) / (4 * f);
+  const sigma0 = -Math.sqrt(f) / (2 * Math.PI * a0);
+  // From V'(a₀) = F' + 8π²a₀σ₀²(2w_eq + 1) = 0:
+  // w_eq = [-F'/(8π²a₀σ₀²) - 1]/2, Ap = w_eq/(-2-w_eq)
+  const w_eq = (-fp / (8 * Math.PI * Math.PI * a0 * sigma0 * sigma0) - 1) / 2;
+  return w_eq / (-2 - w_eq);
 }
 
 // Phantom V'': V''_P = F'' + F'/a₀ - (F')²/F + n(a₀F' + 2F)/a₀²  [Eq. B.13]
@@ -59,15 +62,13 @@ function calibrateChaplyginParams(a0, M, A, r0) {
   const f = lapseF(a0, M, A, r0);
   if (f <= 0) return NaN;
   const s0 = -Math.sqrt(f) / (2 * Math.PI * a0);
-  // Search for Ac that makes V'(a₀) ≈ 0 and V''(a₀) > 0
-  let bestAc = 1, bestErr = 1e9, bestVpp = -Infinity;
-  for (let Ac = 0.1; Ac <= 20; Ac += 0.05) {
+  // Search for Ac that makes V'(a₀) ≈ 0
+  let bestAc = 1, bestErr = 1e9;
+  for (let Ac = 0.01; Ac <= 50; Ac += 0.01) {
     const Vp = Math.abs(effPotPrime(a0, a0, s0, 'chaplygin', { Ac, alpha_c: 0.5 }));
-    const Vpp = effPotD2(a0, a0, s0, 'chaplygin', { Ac, alpha_c: 0.5 });
-    if (Vp < bestErr * 10 && Vpp > bestVpp) {
+    if (Vp < bestErr) {
       bestErr = Vp;
       bestAc = Ac;
-      bestVpp = Vpp;
     }
   }
   return bestAc;
@@ -78,14 +79,12 @@ function calibrateCosmicChap(a0, M, A, r0) {
   const f = lapseF(a0, M, A, r0);
   if (f <= 0) return NaN;
   const s0 = -Math.sqrt(f) / (2 * Math.PI * a0);
-  let bestAgc = 1, bestErr = 1e9, bestVpp = -Infinity;
-  for (let Agc = 0.1; Agc <= 20; Agc += 0.05) {
+  let bestAgc = 1, bestErr = 1e9;
+  for (let Agc = 0.01; Agc <= 50; Agc += 0.01) {
     const Vp = Math.abs(effPotPrime(a0, a0, s0, 'cosmicChap', { Agc, n_gc: 2 }));
-    const Vpp = effPotD2(a0, a0, s0, 'cosmicChap', { Agc, n_gc: 2 });
-    if (Vp < bestErr * 10 && Vpp > bestVpp) {
+    if (Vp < bestErr) {
       bestErr = Vp;
       bestAgc = Agc;
-      bestVpp = Vpp;
     }
   }
   return bestAgc;
@@ -96,14 +95,12 @@ function calibrateModCosmicChap(a0, M, A, r0) {
   const f = lapseF(a0, M, A, r0);
   if (f <= 0) return NaN;
   const s0 = -Math.sqrt(f) / (2 * Math.PI * a0);
-  let bestAmcc = 1, bestErr = 1e9, bestVpp = -Infinity;
-  for (let Amcc = 0.1; Amcc <= 20; Amcc += 0.05) {
+  let bestAmcc = 1, bestErr = 1e9;
+  for (let Amcc = 0.01; Amcc <= 50; Amcc += 0.01) {
     const Vp = Math.abs(effPotPrime(a0, a0, s0, 'modCosmicChap', { Amcc, m_mcc: 2 }));
-    const Vpp = effPotD2(a0, a0, s0, 'modCosmicChap', { Amcc, m_mcc: 2 });
-    if (Vp < bestErr * 10 && Vpp > bestVpp) {
+    if (Vp < bestErr) {
       bestErr = Vp;
       bestAmcc = Amcc;
-      bestVpp = Vpp;
     }
   }
   return bestAmcc;
