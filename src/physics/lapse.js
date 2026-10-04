@@ -376,9 +376,6 @@ function _markClampingDetected() {
 }
 
 /** Numerical second derivative of lapseF using central difference.
- * Mirrors `lapseF` input validation — returns NaN if parameters are invalid. */
-/** Numerical second derivative of lapseF using central difference.
- * Mirrors `lapseF` input validation — returns NaN if parameters are invalid.
  *
  * @param {number} r - radius; values < 0.001 will be clamped to 0.001 for numerical safety
  *   (the hypergeometric series is unstable near z→-∞ which corresponds to very small r).

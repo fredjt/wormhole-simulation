@@ -54,7 +54,9 @@ function calibrateOmega(a0, M, A, r0) {
 // Barotropic V'': V''_B = F'' + F'/a₀ - (F')²/F  [Eq. B.6]
 function barotropicVpp(a0, M, A, r0) {
   const f = lapseF(a0, M, A, r0);
-  if (f <= 0) return NaN;
+  // Guard against small a₀ where lapceFDblPrime clamps silently.
+  if (!isFinite(f) || f <= 0 || a0 < 1e-3) return NaN;
+
   const fp = lapseFPrime(a0, M, A, r0);
   const fpp = lapseFDblPrime(a0, M, A, r0);
   return fpp + fp / a0 - (fp * fp) / f;
@@ -138,11 +140,14 @@ function resolveParams(mIn, aIn, r0In) {
   return { M: mIn ?? M_val, A: aIn ?? A_val, r0: r0In ?? r0_val };
 }
 
-/** Compute σ²(a) = σ₀² · (a/a₀)^(-n_σ) for barotropic EOS where n_σ = 2(1+ω).
- * Shared helper to avoid duplication between the Fast and Accurate variants. */
+/** Compute σ²(a) for barotropic EOS: σ₀²·(a/a₀)^{−4(1+w)}.
+ * Derived from `computeSigmaFromEOS` which returns s0 · (a/a₀)^{-2(1+w)}, so 
+ * σ² ∝ (a/a₀)^{-4(1+w)} = -2×n_σ where n_σ=2(1+ω). */
+/** @internal Compute σ²(a) for barotropic EOS: σ₀²·(a/a₀)^{−4(1+w)}.
+ * NOT validated — callers must ensure omega is valid (NaN → NaN result). */
 function _barotropicSigmaSq(a, a0, s0, omega) {
   const n_sigma = 2.0 * (1.0 + omega);
-  return (s0 * s0) * Math.pow(a / a0, -n_sigma);
+  return (s0 * s0) * Math.pow(a / a0, -2 * n_sigma);
 }
 
 /** Accurate first derivative for barotropic EOS — uses central-difference FD via lapseFPrime.

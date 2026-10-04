@@ -308,7 +308,7 @@ function testGridInterpolation() {
   const fp1 = getFPrimeInterp(2.0, M, A, r0);
 
   // Change parameter slightly (beyond tolerance)
-  initFPGrid(M * 1.001, A, r0);  // M changed by 0.1% > PARAM_TOL.M (1e-7)
+  initFPGrid(M * 1.001, A, r0);  // M changed ~0.1%; direct initFPGrid bypasses _paramsMatch/GRID_PARAM_TOL.
   const fp2 = getFPrimeInterp(2.0, M * 1.001, A, r0);
 
   // Results should differ since grid was rebuilt with different params
