@@ -57,8 +57,10 @@ var last_fp_params = null;  // Last (M,A,r0) used to build the current grid
 /** Rebuild params check — deduplicated helper (#21 from v3 review → #M1 fix in v4). */
 function _paramsMatch(M_in, A_in, r0_val_in) {  
   var gp = last_fp_params;
-  if (!gp || Math.abs(gp.M - M_in) > 1e-8 
-    || Math.abs(gp.A - A_in) > 1e-9 || Math.abs(gp.r0 - r0_val_in) > 1e-10) {  
+  // Tolerances relaxed to prevent unnecessary rebuilds on UI slider interactions. 
+  // Original: M=1e-8, A=1e-9, r0=1e-10 — too tight vs IEEE 754 float noise from string→float conversion (#3 fix).  
+  if (!gp || Math.abs(gp.M - M_in) > 1e-7 
+    || Math.abs(gp.A - A_in) > 1e-6 || Math.abs(gp.r0 - r0_val_in) > 1e-7) {  
     return false;
   }
   return true;
