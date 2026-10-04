@@ -8,6 +8,8 @@ var FD_FIRST_DERIV_H = 1e-7;
 var FD_SECOND_DERIV_H = 1e-5;
 
 // Rate-limit for out-of-bounds warnings during integration (max 10 per second).
+// Set DEBUG_GRID_INTERP=true to disable rate limiting for diagnostic purposes.
+var DEBUG_GRID_INTERP = typeof globalThis !== 'undefined' && globalThis.DEBUG_GRID_INTERP;
 var _warnCount = 0;
 var _warnLastTime = 0;
 
@@ -171,7 +173,7 @@ function initFPGrid(M, A, r0, N) {
 
         if (!isFinite(tmpFP[i])) throw new Error('NaN in dF/dr');
     } catch(e) {
-        console.warn('initFPGrid abort at index ' + i + ': ' + e);
+        console.warn('initFPGrid abort at index ' + i + ': params={' + M + ',' + A + ',' + r0 + ',N=' + N + '} err=' + e);
         return false;
     }
   }
@@ -201,14 +203,15 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
   }
 
   var lo = _binarySearch(0, grid.r.length - 1, grid.r, r);
+  var hi = grid.r.length - 1;
 
   if (r < grid.r[lo]) {
     if (_shouldWarn()) console.warn(`getFPrimeInterp: r=${r} below grid min ${grid.r[lo]}, clamping to first point`); _markClampingDetected();
     return grid.fp[lo];
   }
-  if (r > grid.r[grid.length - 1]) {
-    if (_shouldWarn()) console.warn(`getFPrimeInterp: r=${r} above grid max ${grid.r[grid.length - 1]}, clamping to last point`); _markClampingDetected();
-    return grid.fp[grid.length - 1];
+  if (r > grid.r[hi]) {
+    if (_shouldWarn()) console.warn(`getFPrimeInterp: r=${r} above grid max ${grid.r[hi]}, clamping to last point`); _markClampingDetected();
+    return grid.fp[hi];
   }
 
   var ri_lo = grid.r[lo], ri_hi = grid.r[lo + 1];
@@ -223,8 +226,11 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
 
 
 /* ---- Internal helpers for binary-search interpolation ------------------------------------------ */
-/** Binary search: returns largest index lo such that arr[lo] <= r. */
+/** Binary search: returns largest index lo such that arr[lo] <= r.
+ * Requires: hi > lo (at least two elements). Callers must ensure grid.r.length >= 2.
+ * Returns lo unchanged if hi <= lo (degenerate case). */
 function _binarySearch(lo, hi, arr, r) {
+  if (hi <= lo) return lo;
   while (hi - lo > 1) { var mid = ((lo + hi) >>> 1); if (arr[mid] <= r) lo = mid; else hi = mid; }
   return lo;
 }
@@ -236,6 +242,7 @@ function _binarySearch(lo, hi, arr, r) {
 var _clampingDetected = false;
 
 function _shouldWarn() {
+  if (DEBUG_GRID_INTERP) return true;  // No rate limiting in debug mode
   var now = performance.now();
   if (now - _warnLastTime > 100) { _warnCount = 0; _warnLastTime = now; }
   if (_warnCount >= 10) return false;
