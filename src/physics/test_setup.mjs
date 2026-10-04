@@ -17,11 +17,13 @@ globalThis.eosParams = {omega: -0.5};
 globalThis.lapseF = lapse.lapseF;
 globalThis.lapseFPrime = lapse.lapseFPrime;
 globalThis.lapseFDblPrime = lapse.lapseFDblPrime;
+globalThis.destroyFPGrid = lapse.destroyFPGrid;
+globalThis.resetWarnCounters = lapse.resetWarnCounters;
 globalThis.effPot = potential.effPot;
 globalThis.effPotPrime = potential.effPotPrime;
 globalThis.effPotD2 = potential.effPotD2;
 globalThis.effPotPrimeBarotropicFast = potential.effPotPrimeBarotropicFast;
-globalThis.effPotPrimeBarotropic = potential.effPotPrimeBarotropicNumerical;
+globalThis.effPotPrimeBarotropic = potential.effPotPrimeBarotropicFiniteDiff;
 
 globalThis.calibrateOmega = potential.calibrateOmega;
 globalThis.barotropicVpp = potential.barotropicVpp;

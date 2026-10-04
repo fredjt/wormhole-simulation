@@ -16,6 +16,12 @@ function resetWarnCounters() {
   _warnLastTime = 0;
 }
 
+/** Clear the precomputed grid and parameter cache — used for testing and cleanup. */
+function destroyFPGrid() {
+  fp_grid = null;
+  last_fp_params = null;
+}
+
 // Parameter tolerance for grid rebuild check — chosen to be:
 //   - Tighter than UI slider quantization noise (prevents spurious rebuilds)
 //   - Looser than grid numerical precision floor (~hi2p ≈ 4e-5)
@@ -67,7 +73,10 @@ function lapseF(r, M, A, r0) {
 
   var fg = hypergeom2F1(-0.5, -0.25, 0.75, z);
     // Guard against NaN from extreme values.
-  if (!isFinite(fg)) return Math.pow(1.0 + r0 / r, -4);
+  if (!isFinite(fg)) {
+    console.warn('lapseF: hypergeom2F1 returned non-finite — falling back to regulator-only form');
+    return Math.pow(1.0 + r0 / r, -4);
+  }
 
   var bracket = 1.0 - (2.0 * M / r - A * r0 * r0 / (r * r) * fg);
   return bracket * Math.pow(1.0 + r0 / r, -4);  
@@ -146,7 +155,7 @@ function initFPGrid(M, A, r0, N) {
 }
 
 /** Evaluate pre-computed F'(r) via linear interpolation on the grid.
- * Uses explicit params: getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in). */
+ * Requires: M_val, A_val, r0_val to be set (by initSim) before calling. */
 function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
   if (!_paramsMatch(M_val_in, A_val_in, r0_val_in)) initFPGrid(M_val_in, A_val_in, r0_val_in);
 
@@ -177,7 +186,8 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
   return fp_grid.fp[lo] + (fp_grid.fp[lo + 1] - fp_grid.fp[lo]) * ((r - ri_lo) / denom);
 }
 
-/** Evaluate pre-computed F(r) via linear interpolation on the grid. */
+/** Evaluate pre-computed F(r) via linear interpolation on the grid.
+ * Requires: M_val, A_val, r0_val to be set (by initSim) before calling. */
 function getFInterp(r, M_val_in, A_val_in, r0_val_in) {
   if (!_paramsMatch(M_val_in, A_val_in, r0_val_in)) initFPGrid(M_val_in, A_val_in, r0_val_in);
 
@@ -219,9 +229,10 @@ function _shouldWarn() {
   return true;
 }
 
+/** Numerical second derivative of lapseF using central difference. */
 function lapseFDblPrime(r, M, A, r0, h) { if (!h) h = FD_SECOND_DERIV_H; return (lapseF(r + h, M, A, r0) - 2 * lapseF(r, M, A, r0) + lapseF(r - h, M, A, r0)) / (h * h); }
 
 /** Numerical first derivative of lapseF using central difference. */
 function lapseFPrime(r, M, A, r0, h) { if (!h) h = FD_FIRST_DERIV_H; return (lapseF(r + h, M, A, r0) - lapseF(r - h, M, A, r0)) / (2 * h); }
 
-export { lapseF, lapseFPrime, lapseFDblPrime, initFPGrid, getFPrimeInterp, resetWarnCounters };
+export { lapseF, lapseFPrime, lapseFDblPrime, initFPGrid, getFPrimeInterp, resetWarnCounters, destroyFPGrid };
