@@ -119,7 +119,11 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
   if (!_paramsMatch(M_val_in, A_val_in, r0_val_in)) initFPGrid(M_val_in, A_val_in, r0_val_in);
 
   var grid = fp_grid;
-  if (!grid || !isFinite(grid.r[0])) return lapseFPrime(r, M_val_in, A_val_in, r0_val_in); // fallback
+  if (!grid || !isFinite(grid.r[0])) {
+    // Numerical differentiation fallback
+    var h = 1e-7;
+    return (lapseF(r + h, M_val_in, A_val_in, r0_val_in) - lapseF(r - h, M_val_in, A_val_in, r0_val_in)) / (2 * h);
+  }
 
   var lo = _binarySearch(0, grid.r.length - 1, grid.r, r);
 
@@ -162,4 +166,4 @@ return grid.fp[lo] + (grid.fp[lo + 1] - grid.fp[lo]) * ((r - ri_lo) / denom);
 }
 function lapseFDblPrime(r, M, A, r0, h) { if (!h) h = 1e-5; return (lapseF(r + h, M, A, r0) - 2 * lapseF(r, M, A, r0) + lapseF(r - h, M, A, r0)) / (h * h); }
 
-export { lapseF, lapseFPrime, lapseFDblPrime, initFPGridIfNeeded, getFPrimeInterp };
+export { lapseF, lapseFDblPrime, initFPGrid, getFPrimeInterp };

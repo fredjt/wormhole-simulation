@@ -10,6 +10,9 @@ let passed = 0;
 let failed = 0;
 let total = 0;
 
+// Numerical first derivative helper (lapseFPrime was removed from lapse.js)
+function lapseFPrime(r, M, A, r0, h) { if (!h) h = 1e-7; return (lapseF(r + h, M, A, r0) - lapseF(r - h, M, A, r0)) / (2 * h); }
+
 function assert(condition, message) {
   total++;
   if (condition) {
