@@ -247,8 +247,10 @@ function initFPGrid(M, A, r0, N) {
         // Right side available, left side out of bounds — use forward difference.
         tmpFP[i] = (lapseF(ri + hi2p, M, A, r0) - lapseF(ri, M, A, r0)) / hi2p;
       } else {
-        // Both sides out of bounds — use smallest available step.
-        var h = Math.min(hi2p, hiLeft + hiRight);
+        // Both sides out of bounds — use the available direction's full distance.
+        // Using `hiLeft || hiRight` avoids dividing by a tiny sum when one side
+        // is near zero and the other has ample room (prevents cancellation error).
+        var h = Math.min(hi2p, hiRight || hiLeft);
         if (h > 0 && isFinite(lapseF(ri + h, M, A, r0))) {
           tmpFP[i] = (lapseF(ri + h, M, A, r0) - lapseF(ri, M, A, r0)) / h;
         } else {

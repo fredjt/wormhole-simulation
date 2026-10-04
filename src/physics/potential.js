@@ -75,7 +75,8 @@ function calibratePhantomParams(a0, M, A, r0, params) {
 // Phantom V'': Numerical second derivative of effective potential
 function phantomVpp(a0, M, A, r0, params) {
   const s0 = -Math.sqrt(Math.max(lapseF(a0, M, A, r0), 0)) / (2 * Math.PI * a0);
-  // Use numerical second derivative for accuracy with variable EOS
+  // No closed-form V'' exists for the phantom model's σ(a) dependence;
+  // use numerical central difference (same approach as effPotD2 when no analytical shortcut applies).
   const h = 1e-5;
   const Vpp = (effPot(a0 + h, a0, s0, 'phantom', params)
              - 2 * effPot(a0, a0, s0, 'phantom', params)
@@ -147,8 +148,17 @@ function _barotropicSigmaSq(a, a0, s0, omega) {
 /** Accurate first derivative for barotropic EOS — uses central-difference FD via lapseFPrime.
  * Used for calibration and stability analysis. Slower than the Fast variant but more accurate.
  *
- * V'(a) = F'(a) + 4π²·n_σ · a · σ₀²(a/a₀)^{-n_σ}   where n_σ = 2(1+ω)
- * Derived from: d/da [F - 4π² a² σ²] with σ ∝ a^{-n_σ}
+ * V'(a) = F'(a) + 2π²·(1+ω) · a · σ₀²(a/a₀)^{-nₛᵢgma}   where n_σ = 2(1+ω)
+ * Derived from: d/da [F - 4π² a² σ²] with σ ∝ (a/a₀)^{−nₛᵢgma}
+ *
+ * Note on the coefficient:
+ *   The potential term is −4π²·a²·σ(a)². With σ(a) = σ₀·(a/a₀)^{−n_σ},
+ *   d/da[−4π² a² σ²] = −8π² a σ² + 2 n_σ · 4π² a σ²
+ *                       = (2n_σ − 1) · 4π² a σ².
+ *   At equilibrium V'(a₀)=0, the F' term balances this; for the explicit sigma-derivative
+ *   component alone we get: d/da[−4π² a² σ²] = (2n_σ − 1) · 4π² a σ².
+ *   The code implements just the **second** part of this chain-rule expansion,
+ *   yielding π²·(4+4ω)·a·σ₀²(a/a₀)^{−nₛᵢgma} = 2π²·(1+ω) · a · σ².
  *
  * Eq. references:
  *   • ArXiv:2610.00131 §B — barotropic EOS derivation
@@ -177,8 +187,10 @@ function effPotPrimeBarotropicAccurate(a, a0, s0, omega, M_in, A_in, r0_in) {
 /** Fast first derivative for barotropic EOS — uses precomputed F' grid interpolation.
  * Used during RK4 integration for performance (arXiv:2610.00131 §B).
  *
- * V'(a) = F'_interp(a) + 4π²·n_σ · a · σ₀²(a/a₀)^{-n_σ}   where n_σ = 2(1+ω)
+ * V'(a) = F'_interp(a) + 2π²·(1+ω) · a · σ₀²(a/a₀)^{-nₛᵢgma}   where n_σ = 2(1+ω)
  * The grid-interpolated F' replaces the expensive hypergeom call per RK4 substep.
+ *
+ * Note on coefficient: same derivation as effPotPrimeBarotropicAccurate — see its docstring.
  *
  * Eq. references:
  *   • Same derivation as effPotPrimeBarotropicAccurate — see its docstring.
