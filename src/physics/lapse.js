@@ -109,9 +109,17 @@ var fp_grid_dirty = false;  // Flag: grid needs rebuild (params changed during s
 /** Rebuild params check — deduplicated helper.
  * Returns true if the current grid matches the given parameters within tolerance.
  * Also considers the dirty flag: if fp_grid_dirty is true, we force a rebuild
- * even if _paramsMatch would pass (prevents stale grid after mid-sim parameter change). */
+ * even if _paramsMatch would pass (prevents stale grid after mid-sim parameter change).
+ *
+ * Important: When this returns false, the caller will call initFPGrid().
+ * _paramsMatch clears fp_grid_dirty so that after a successful rebuild,
+ * subsequent calls don't keep rebuilding on every interpolation step.
+ */
 function _paramsMatch(M_in, A_in, r0_val_in) {
-  if (fp_grid_dirty) return false;  // Force rebuild if marked dirty
+  if (fp_grid_dirty) {
+    fp_grid_dirty = false;  // Clear dirty so next call won't rebuild again
+    return false;
+  }
   var gp = last_fp_params;
   // Tolerances relaxed to prevent unnecessary rebuilds on UI slider interactions.
   if (!gp || Math.abs(gp.M - M_in) > PARAM_TOL.M
@@ -166,10 +174,29 @@ function initFPGrid(M, A, r0, N) {
         // grid construction — small h values can cause cancellation error with hypergeom.
         var hi2p = Math.max(rMin * 5e-7, dr / (N + 4));
         if (!isFinite(hi2p)) throw 'non-finite hi2p at index ' + i;
-        // NOTE: For points near rMin, ri - hi2p may fall below rMin. lapseF guards
-        // against r <= 0 by returning NaN, which triggers the try/catch abort. This
-        // means boundary derivatives may be less accurate than interior points.
-        tmpFP[i] = (lapseF(ri + hi2p, M, A, r0) - lapseF(ri - hi2p, M, A, r0)) / (2.0 * hi2p);
+
+        // Use central difference when both sides are valid; fall back to
+        // one-sided differences at boundaries where ri ± hi2p would go out of bounds.
+        var hiLeft = Math.max(ri - rMin, 0);
+        var hiRight = rMax - ri;
+        if (hiLeft >= hi2p && hiRight >= hi2p) {
+          // Central difference — most accurate.
+          tmpFP[i] = (lapseF(ri + hi2p, M, A, r0) - lapseF(ri - hi2p, M, A, r0)) / (2.0 * hi2p);
+        } else if (hiLeft >= hi2p) {
+          // Left side available, right side out of bounds — use backward difference.
+          tmpFP[i] = (lapseF(ri, M, A, r0) - lapseF(ri - hi2p, M, A, r0)) / hi2p;
+        } else if (hiRight >= hi2p) {
+          // Right side available, left side out of bounds — use forward difference.
+          tmpFP[i] = (lapseF(ri + hi2p, M, A, r0) - lapseF(ri, M, A, r0)) / hi2p;
+        } else {
+          // Both sides out of bounds — use smallest available step.
+          var h = Math.min(hi2p, hiLeft + hiRight);
+          if (h > 0 && isFinite(lapseF(ri + h, M, A, r0))) {
+            tmpFP[i] = (lapseF(ri + h, M, A, r0) - lapseF(ri, M, A, r0)) / h;
+          } else {
+            throw new Error('cannot compute derivative at boundary point ri=' + ri);
+          }
+        }
 
         if (!isFinite(tmpFP[i])) throw new Error('NaN in dF/dr');
     } catch(e) {
