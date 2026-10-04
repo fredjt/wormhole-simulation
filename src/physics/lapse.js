@@ -36,17 +36,17 @@ function hypergeom2F1(a, b, c, z) {
 }
 
 function lapseF(r, M, A, r0) {  
-  if (r <= 0) return 1.0;
+  if (r <= 0 || !isFinite(M) || !isFinite(A) || !isFinite(r0)) return NaN; // #M3 — guard against non-finite inputs.
   var ratio = r / r0;
-  // Compute -r^4/r_0^4 correctly as -(x² * x²).
+  // Compute -r^4/r_0^4 correctly as -(x² * x²).  
   var z = -(ratio * ratio) * (ratio * ratio);
 
-  var fg = hypergeom2F1(-0.5, -0.25, 0.75, z);  
-  // Guard against NaN from extreme values — fall back to bracket-only if undefined (#14).
+  var fg = hypergeom2F1(-0.5, -0.25, 0.75, z);
+  // Guard against NaN from extreme values — fall back to bracket-only if undefined (#14).  
   if (!isFinite(fg)) return Math.pow(1.0 + r0 / r, -4);
 
-  var bracket = 1.0 - (2.0 * M / r - A * r0 * r0 / (r * r) * fg);  
-  return bracket * Math.pow(1.0 + r0 / r, -4);
+  var bracket = 1.0 - (2.0 * M / r - A * r0 * r0 / (r * r) * fg);
+  return bracket * Math.pow(1.0 + r0 / r, -4);  
 }
 
 // ================================================================
@@ -54,23 +54,24 @@ function lapseF(r, M, A, r0) {
 var fp_grid = null;   // {r: Float64Array, f: Float64Array, fp: Float64Array}  
 var last_fp_params = null;  // Last (M,A,r0) used to build the current grid
 
-/** Rebuild params check — deduplicated helper (#21 from v3 review). */
-function _paramsMatch(M_in, A_in, r0_val_in) {
-  var gp = last_fp_params;  
+/** Rebuild params check — deduplicated helper (#21 from v3 review → #M1 fix in v4). */
+function _paramsMatch(M_in, A_in, r0_val_in) {  
+  var gp = last_fp_params;
   if (!gp || Math.abs(gp.M - M_in) > 1e-8 
-    || Math.abs(gp.A - A_in) > 1e-9 || Math.abs(gp.r0 - r0_val_in) > 1e-10) {
+    || Math.abs(gp.A - A_in) > 1e-9 || Math.abs(gp.r0 - r0_val_in) > 1e-10) {  
     return false;
-  }  
+  }
   return true;
 }
 
 /** Build a dense (N=256) grid of (r, F(r), dF/dr) for given M,A,r0. */ 
-function initFPGrid(M, A, r0, N) {  // Removed unused _rmin_in/_rmax_in params (#4/#11 fix from v2 review).
-  if (!N) N = 256;
+function initFPGrid(M, A, r0, N) { // Removed unused _rmin_in/_rmax_in params (#4/#11 fix from v2 review).
+  if (!N || !isFinite(N)) N = 256;
 
   var rMin = Math.max(0.1 * M || 0.05, 0.01);   // Physics-derived defaults: scale with mass but floor at 0.01 (#16 fix — no unphysically small grid).  
+  if (!isFinite(rMin)) { console.warn('initFPGrid: non-finite rMin'); return false; }
   var rMax = Math.max(rMin + 8, rMin * (M > 3 ? 4 : 3));
-  var dr = (rMax - rMin) / (N - 1);
+  if (!isFinite(rMax) || rMax <= rMin) { console.warn('initFPGrid: invalid grid bounds'); return false; }
 
   // Use a temporary array to make construction atomic (#17 fix — partial grid never stored if loop fails).  
   var tmpR = new Float64Array(N), 
@@ -79,14 +80,13 @@ function initFPGrid(M, A, r0, N) {  // Removed unused _rmin_in/_rmax_in params (
 
   for (var i = 0; i < N; ++i) {
     var ri = rMin + dr * i;  
-    tmpR[i] = ri;
+    if (!isFinite(ri)) return false; // Early abort on non-finite radius.
 
     try {
-      // Compute F(r) — guard against NaN from hypergeom overflow (#14).  
-      tmpF[i] = lapseF(ri, M, A, r0);  
+      tmpF[i] = lapseF(ri, M, A, r0);  // #M3 — guard against NaN from hypergeom overflow (#14).  
 
       if (!isFinite(tmpF[i])) throw new Error('NaN in F');  // Abort grid construction on bad value.
-      
+
       var hi2p = Math.max(rMin * 5e-7, dr / (N + 4));  
       tmpFP[i] = isFinite(hi2p) ? 
         ((lapseF(ri + hi2p, M, A, r0) - lapseF(ri - hi2p, M, A, r0)) / (2.0 * hi2p)) : 0;
@@ -98,6 +98,9 @@ function initFPGrid(M, A, r0, N) {  // Removed unused _rmin_in/_rmax_in params (
     }
   }
 
+  dr = (rMax - rMin) / (N - 1);  // Compute after bounds validated.
+  for (var i = 0; i < N; ++i) { tmpR[i] = rMin + dr * i; }
+
   // Only commit the grid if ALL values were valid (atomic write #17 fix).  
   fp_grid = {r: tmpR, f: tmpF, fp: tmpFP};
   last_fp_params = {M: M, A: A, r0: r0}; 
@@ -105,7 +108,7 @@ function initFPGrid(M, A, r0, N) {  // Removed unused _rmin_in/_rmax_in params (
 }
 
 /** Evaluate pre-computed F'(r) via linear interpolation on the grid (with explicit params #1 fix). */  
-function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {  // Explicit param names (#1 critical blocking fix — matches physics function convention).
+function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {  // Explicit param names (#C2: _in suffix to distinguish from globals — consistent with this function's signature only; see naming convention note in JSDoc below).
   if (!_paramsMatch(M_val_in, A_val_in, r0_val_in)) initFPGrid(M_val_in, A_val_in, r0_val_in);
 
   var grid = fp_grid; 
@@ -130,7 +133,7 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {  // Explicit param 
 }
 
 /** Evaluate pre-computed F(r) via linear interpolation on the grid. */
-function getFInterp(r, M_val_in, A_val_in, r0_val_in) {  // Explicit param names (#1 fix — consistent with other functions).
+function getFInterp(r, M_val_in, A_val_in, r0_val_in) {  // Explicit param names (#C2: consistent with getFPrimeInterp).
   if (!_paramsMatch(M_val_in, A_val_in, r0_val_in)) initFPGrid(M_val_in, A_val_in, r0_val_in);
 
   var grid = fp_grid; 
@@ -150,11 +153,9 @@ function getFInterp(r, M_val_in, A_val_in, r0_val_in) {  // Explicit param names
   return fp_grid.f[lo] + (fp_grid.f[hi] - fp_grid.f[lo]) * ((r - ri_lo) / denom);
 }  
 
-/** Rebuild the F'(r)-grid before starting a simulation run if parameters changed. */  
-function initFPGridIfNeeded(M, A, r0) {  // Explicit param names (#1 fix — consistent with physics function convention).
-  var gp = last_fp_params;
-  if (!gp || Math.abs(gp.M - M) > 1e-8 
-    || Math.abs(gp.A - A) > 1e-9 || Math.abs(gp.r0 - r0) > 1e-10) initFPGrid(M, A, r0);  
+/** Rebuild the F'(r)-grid before starting a simulation run if parameters changed (#M1 fix: uses _paramsMatch helper). */  
+function initFPGridIfNeeded(M, A, r0) {  // Plain names to match existing physics function conventions (no _in suffix — consistent with calibrateOmega(a0,M,A,r0), barotropicVpp(a0,M,A,r0), etc.).
+  if (!_paramsMatch(M, A, r0)) initFPGrid(M, A, r0);  
 }
 
 // Original numerical differentiation — kept for calibration where accuracy matters.
