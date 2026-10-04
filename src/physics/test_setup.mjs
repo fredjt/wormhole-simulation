@@ -26,7 +26,7 @@ globalThis.effPot = potential.effPot;
 globalThis.effPotPrime = potential.effPotPrime;
 globalThis.effPotD2 = potential.effPotD2;
 globalThis.effPotPrimeBarotropicFast = potential.effPotPrimeBarotropicFast;
-globalThis.effPotPrimeBarotropic = potential.effPotPrimeBarotropicNumerical;
+globalThis.effPotPrimeBarotropic = potential.effPotPrimeBarotropicAccurate;
 
 globalThis.calibrateOmega = potential.calibrateOmega;
 globalThis.barotropicVpp = potential.barotropicVpp;

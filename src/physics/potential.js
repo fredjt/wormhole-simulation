@@ -131,7 +131,14 @@ function calibrateModCosmicChap(a0, M, A, r0) {
   }
   return bestAmcc;
 }
-/** Numerical first derivative for barotropic EOS — uses central-difference FD via lapseFPrime.
+/** Compute σ²(a) = σ₀² · (a/a₀)^(-n_σ) for barotropic EOS where n_σ = 2(1+ω).
+ * Shared helper to avoid duplication between the Fast and Accurate variants. */
+function _barotropicSigmaSq(a, a0, s0, omega) {
+  const n_sigma = 2.0 * (1.0 + omega);
+  return (s0 * s0) * Math.pow(a / a0, -n_sigma);
+}
+
+/** Accurate first derivative for barotropic EOS — uses central-difference FD via lapseFPrime.
  * Used for calibration and stability analysis. Slower than the Fast variant but more accurate.
  *
  * V'(a) = F'(a) + 4π²·n_σ · a · σ₀²(a/a₀)^{-n_σ}  where n_σ = 2(1+ω)
@@ -150,18 +157,16 @@ function calibrateModCosmicChap(a0, M, A, r0) {
  * @param {number} [A] - String tension parameter (falls back to A_val if omitted)
  * @param {number} [r0] - Scale factor parameter (falls back to r0_val if omitted)
  * @returns {number} First derivative of effective potential */
-function effPotPrimeBarotropicNumerical(a, a0, s0, omega, M_in, A_in, r0_in) {
+function effPotPrimeBarotropicAccurate(a, a0, s0, omega, M_in, A_in, r0_in) {
   const _M = M_in ?? M_val;
   const _A = A_in ?? A_val;
   const _r0 = r0_in ?? r0_val;
-  const n_sigma = 2.0 * (1.0 + omega);
-  // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ)
-  const sigma_sq_scaled = (s0 * s0) * Math.pow(a / a0, -n_sigma);
   return lapseFPrime(a, _M, _A, _r0) +
-         2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;
+         2.0 * Math.PI * Math.PI * 2.0 * (1.0 + omega) * a * _barotropicSigmaSq(a, a0, s0, omega);
 }
-/** Fast numerical first derivative for barotropic EOS — uses precomputed F' grid interpolation.
- * Used during RK4 integration for performance. Faster than Numerical variant but uses grid interpolation.
+
+/** Fast first derivative for barotropic EOS — uses precomputed F' grid interpolation.
+ * Used during RK4 integration for performance. Faster than Accurate variant but uses grid interpolation.
  *
  * Accepts explicit (M, A, r₀) parameters with fallback to module-level globals.
  * @param {number} a - Current scale factor
@@ -176,11 +181,8 @@ function effPotPrimeBarotropicFast(a, a0, s0, omega, M_in, A_in, r0_in) {
   const _M = M_in ?? M_val;
   const _A = A_in ?? A_val;
   const _r0 = r0_in ?? r0_val;
-  const n_sigma = 2.0 * (1.0 + omega);
-  // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ)
-  const sigma_sq_scaled = (s0 * s0) * Math.pow(a / a0, -n_sigma);
   return getFPrimeInterp(a, _M, _A, _r0) +
-         2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;
+         2.0 * Math.PI * Math.PI * 2.0 * (1.0 + omega) * a * _barotropicSigmaSq(a, a0, s0, omega);
 }
 // Export list:
 // barotropicVpp and phantomVpp remain exported for analytical reference and test coverage.
@@ -190,4 +192,4 @@ export { computeVpp, computeVppOptimized,
          calibratePhantomParams, phantomVpp,
          calibrateChaplyginParams,
          calibrateCosmicChap, calibrateModCosmicChap,
-         effPotPrimeBarotropicFast, effPotPrimeBarotropicNumerical };
+         effPotPrimeBarotropicFast, effPotPrimeBarotropicAccurate };
