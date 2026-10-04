@@ -142,9 +142,9 @@ function effPotPrimeBarotropicNumerical(a, a0, s0, omega) {  // #M2 renamed to "
          2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;  
 }
 /** Fast numerical first derivative for barotropic EOS — uses pre-computed F' grid (zero hypergeom calls).
- * Uses global state set by initSim() via getFPrimeInterp(a, M_val_in, A_val_in, r0_val_in) (#C2 fix: plain naming consistent with other physics functions using globals during simulation loop).  
+ * Uses global state set by initSim() via getFPrimeInterp(a, M_val_in, A_val_in, r0_val_in).  
  */  
-function effPotPrimeBarotropicFast(a, a0, s0, omega) {  // No explicit (M,A,r₀) — uses module-level state set by initSim() via getFPrimeInterp. Consistent with existing conventions (#C2 fix: plain naming like calibrateOmega).
+function effPotPrimeBarotropicFast(a, a0, s0, omega) {  // No explicit (M,A,r₀) — uses module-level state set by initSim() via getFPrimeInterp.
   const n_sigma = 2.0 * (1.0 + omega);  
   // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ) 
   const sigma_sq_scaled = (s0 * s0) * Math.pow(a / a0, -n_sigma);

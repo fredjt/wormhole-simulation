@@ -14,7 +14,7 @@ function hypergeom2F1(a, b, c, z) {
     return result;
   }
 
-  //   // Piecewise iteration count scaled with |z|.
+  // Piecewise iteration count scaled with |z|.
   var absZ = Math.abs(z);  
   if (absZ <= 0.3) {
     return series(a, b, c, z, Math.min(150 * absZ + 20, 80), 1e-14);
@@ -54,11 +54,11 @@ function lapseF(r, M, A, r0) {
 var fp_grid = null;   // {r: Float64Array, f: Float64Array, fp: Float64Array}  
 var last_fp_params = null;  // Last (M,A,r0) used to build the current grid
 
-/** Rebuild params check — deduplicated helper (updated from iterative review). */
+/** Rebuild params check — deduplicated helper. */
 function _paramsMatch(M_in, A_in, r0_val_in) {  
   var gp = last_fp_params;
   // Tolerances relaxed to prevent unnecessary rebuilds on UI slider interactions. 
-  // Original: M=1e-8, A=1e-9, r0=1e-10 — too tight vs IEEE 754 float noise from string→float conversion (#3 fix).  
+  // Original: M=1e-8, A=1e-9, r0=1e-10 — too tight vs IEEE 754 float noise.  
   if (!gp || Math.abs(gp.M - M_in) > 1e-7 
     || Math.abs(gp.A - A_in) > 1e-6 || Math.abs(gp.r0 - r0_val_in) > 1e-7) {  
     return false;
@@ -79,7 +79,7 @@ function initFPGrid(M, A, r0, N) {
   var dr = (rMax - rMin) / (N - 1);
   if (!isFinite(dr)) { console.warn('initFPGrid: non-finite grid spacing'); return false; }
 
-  // Use a temporary array to make construction atomic (#17 fix — partial grid never stored if loop fails).  
+  // Use a temporary array to make construction atomic (partial grid never stored if loop fails).  
   var tmpR = new Float64Array(N), 
       tmpF = new Float64Array(N),
       tmpFP = new Float64Array(N);  
@@ -106,13 +106,12 @@ function initFPGrid(M, A, r0, N) {
     }
   }
 
-  // Only commit the grid if ALL values were valid (atomic write #17 fix). No second loop needed.
+  // Only commit the grid if ALL values were valid. No second loop needed.
   fp_grid = {r: tmpR, f: tmpF, fp: tmpFP};
   last_fp_params = {M: M, A: A, r0: r0}; 
   return true; // Indicate successful construction.
 }
 
-/** Evaluate pre-computed F'(r) via linear interpolation on the grid.
 /** Evaluate pre-computed F'(r) via linear interpolation on the grid.
  * Uses explicit params: getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in). */
 function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
@@ -136,7 +135,10 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
   var denom = ri_hi - ri_lo;
   if (!isFinite(denom) || Math.abs(denom) < 1e-20) return fp_grid.fp[lo];
 
-  /** Evaluate pre-computed F(r) via linear interpolation on the grid. */
+  return fp_grid.fp[lo] + (fp_grid.fp[lo + 1] - fp_grid.fp[lo]) * ((r - ri_lo) / denom);
+}
+
+/** Evaluate pre-computed F(r) via linear interpolation on the grid. */
 function getFInterp(r, M_val_in, A_val_in, r0_val_in) {
   if (!_paramsMatch(M_val_in, A_val_in, r0_val_in)) initFPGrid(M_val_in, A_val_in, r0_val_in);
 
@@ -153,8 +155,9 @@ function getFInterp(r, M_val_in, A_val_in, r0_val_in) {
   if (!isFinite(denom) || Math.abs(denom) < 1e-20) return fp_grid.f[lo];
 
   // Linear interpolation between adjacent grid points.
-  return fp_grid.f[lo] + (fp_grid.f[grid.r.length - 1] - fp_grid.f[lo]) * ((r - ri_lo) / denom);
+  return fp_grid.f[lo] + (fp_grid.f[lo + 1] - fp_grid.f[lo]) * ((r - ri_lo) / denom);
 }
+
 /* ---- Internal helpers for binary-search interpolation ------------------------------------------ */
 /** Binary search: returns largest index lo such that arr[lo] <= r. */
 function _binarySearch(lo, hi, arr, r) {
@@ -162,8 +165,9 @@ function _binarySearch(lo, hi, arr, r) {
   return lo;
 }
 
-return grid.fp[lo] + (grid.fp[lo + 1] - grid.fp[lo]) * ((r - ri_lo) / denom);
-}
 function lapseFDblPrime(r, M, A, r0, h) { if (!h) h = 1e-5; return (lapseF(r + h, M, A, r0) - 2 * lapseF(r, M, A, r0) + lapseF(r - h, M, A, r0)) / (h * h); }
 
-export { lapseF, lapseFDblPrime, initFPGrid, getFPrimeInterp };
+/** Numerical first derivative of lapseF using central difference. */
+function lapseFPrime(r, M, A, r0, h) { if (!h) h = 1e-7; return (lapseF(r + h, M, A, r0) - lapseF(r - h, M, A, r0)) / (2 * h); }
+
+export { lapseF, lapseFPrime, lapseFDblPrime, initFPGrid, getFPrimeInterp };
