@@ -24,7 +24,7 @@ function assert(condition, message) {
 function approx(a, b, tol = TOLERANCE, message = '') {
   const diff = Math.abs(a - b);
   const relDiff = diff / (Math.abs(b) || 1);
-  assert(diff < tol * Math.max(1, Math.abs(b)), 
+  assert(diff < tol * Math.max(1, Math.abs(b)),
     `${message ? message + ': ' : ''}${a.toFixed(8)} ≈ ${b.toFixed(8)} (diff=${diff.toExponential(2)})`);
 }
 
@@ -37,9 +37,9 @@ function finite(val, message = '') {
 // ============================================
 function testLapseFunction() {
   console.log('\n=== 1. Lapse Function F(r) ===');
-  
+
   const M = 1.0, A = 0.3, r0 = 0.5;
-  
+
   // Test 1: F(r) is finite for all r > 0
   for (let r = 0.1; r <= 10; r += 0.5) {
     const f = lapseF(r, M, A, r0);
@@ -51,23 +51,23 @@ function testLapseFunction() {
   const fLarge = lapseF(20.0, M, A, r0);
   assert(fSmall < fMedium && fMedium < fLarge, 'F(r) monotonically increases with r');
   assert(fLarge > 0.75, `F(20)=${fLarge.toFixed(4)} > 0.75 (approaching asymptotic flatness)`);
-  
+
   // Test 3: F(r) at r = r0 (regularization scale)
   const fAtR0 = lapseF(r0, M, A, r0);
   finite(fAtR0, `F(r₀)`);
-  
+
   // Test 4: First derivative exists and is finite
   for (let r = 0.5; r <= 5; r += 0.5) {
     const fp = lapseFPrime(r, M, A, r0);
     finite(fp, `F'(${r})`);
   }
-  
+
   // Test 5: Second derivative exists and is finite
   for (let r = 0.5; r <= 5; r += 0.5) {
     const fpp = lapseFDblPrime(r, M, A, r0);
     finite(fpp, `F''(${r})`);
   }
-  
+
   // Test 6: F(r) has correct sign behavior (negative inside horizon, positive outside)
   const [rPlus] = findHorizons(M, A, r0);
   if (rPlus !== null) {
@@ -83,19 +83,19 @@ function testLapseFunction() {
 // ============================================
 function testSurfaceSigma() {
   console.log('\n=== 2. Surface Energy Density σ ===');
-  
+
   const M = 1.0, A = 0.3, r0 = 0.5;
   const a0 = 3.0;  // In positive-lapse region (F > 0)
   const f0 = lapseF(a0, M, A, r0);
-  
+
   // Test 1: σ is negative (exotic matter)
   const sigma0 = surfaceSigma(a0, Math.max(f0, 0), 0);
   assert(sigma0 < 0, `σ < 0 (exotic): ${sigma0.toFixed(6)}`);
-  
+
   // Test 2: σ formula matches paper: σ = -√(F + ȧ²)/(2πa)
   const expectedSigma = -Math.sqrt(f0) / (2 * Math.PI * a0);
   approx(sigma0, expectedSigma, TOLERANCE, 'σ formula');
-  
+
   // Test 3: σ formula is consistent (check at two points)
   const sigma1 = surfaceSigma(a0 * 1.5, lapseF(a0 * 1.5, M, A, r0), 0);
   assert(Math.abs(sigma1) > 0, '|σ| nonzero at larger a');
@@ -106,25 +106,25 @@ function testSurfaceSigma() {
 // ============================================
 function testEffectivePotential() {
   console.log('\n=== 3. Effective Potential V(a) ===');
-  
+
   const M = 1.0, A = 0.3, r0 = 0.5;
   const a0 = 3.0;  // In positive-lapse region (F > 0)
   const f0 = lapseF(a0, M, A, r0);
   const sigma0 = -Math.sqrt(f0) / (2 * Math.PI * a0);
-  
+
   // Test 1: V(a₀) = 0 at equilibrium (for calibrated shell)
   const V_a0 = effPot(a0, a0, sigma0, 'barotropic', { omega: -0.5 });
   finite(V_a0, 'V(a₀)');
-  
+
   // Test 2: V'(a₀) ≈ 0 at equilibrium (calibrated)
   const omega_cal = calibrateOmega(a0, M, A, r0);
   const Vp = effPotPrime(a0, a0, sigma0, 'barotropic', { omega: omega_cal });
   approx(Vp, 0, TOLERANCE * 10, "V'(a₀) ≈ 0 (calibrated)");
-  
+
   // Test 3: V''(a₀) > 0 for stable configuration (barotropic at small a₀)
   const Vpp = effPotD2(a0, a0, sigma0, 'barotropic', { omega: -0.5 });
   finite(Vpp, "V''(a₀)");
-  
+
   // Test 4: V(a) → F(a) as σ → 0 (vacuum limit)
   const V_vac = effPot(a0, a0, 0, 'barotropic', { omega: -0.5 });
   approx(V_vac, f0, TOLERANCE * 10, 'V(a) → F(a) as σ→0');
@@ -135,9 +135,9 @@ function testEffectivePotential() {
 // ============================================
 function testBarotropicCalibration() {
   console.log('\n=== 4. Barotropic Calibration ===');
-  
+
   const M = 1.0, A = 0.3, r0 = 0.5;
-  
+
   // Test 1: ω formula matches paper Eq. B.4: ω = -(a₀F' + 2F)/(4F)
   for (let a0 of [1.5, 2.0, 2.5]) {
     const f = lapseF(a0, M, A, r0);
@@ -147,7 +147,7 @@ function testBarotropicCalibration() {
     const actualOmega = calibrateOmega(a0, M, A, r0);
     approx(actualOmega, expectedOmega, TOLERANCE, `ω at a₀=${a0}`);
   }
-  
+
   // Test 2: V''_B formula matches paper Eq. B.6
   for (let a0 of [1.5, 2.0]) {
     const f = lapseF(a0, M, A, r0);
@@ -158,7 +158,7 @@ function testBarotropicCalibration() {
     const actualVpp = barotropicVpp(a0, M, A, r0);
     approx(actualVpp, expectedVpp, TOLERANCE * 10, `V''_B at a₀=${a0}`);
   }
-  
+
   // Test 3: Barotropic V''_B formula check (positive-lapse region only)
   // a₀ must be > r₊ for F(a₀) > 0
   const [rPlus] = findHorizons(M, A, r0);
@@ -168,7 +168,7 @@ function testBarotropicCalibration() {
     const vpp = barotropicVpp(aTest, M, A, r0);
     assert(isFinite(vpp), `V''_B finite at a₀=${aTest.toFixed(1)}`);
   }
-  
+
   // Test 4: Barotropic is unstable for large a₀ (paper's finding)
   const omegaLarge = calibrateOmega(3.0, M, A, r0);
   const vppLarge = barotropicVpp(3.0, M, A, r0);
@@ -180,22 +180,22 @@ function testBarotropicCalibration() {
 // ============================================
 function testHorizonFinding() {
   console.log('\n=== 5. Horizon Finding ===');
-  
+
   const M = 1.0, A = 0.3, r0 = 0.5;
-  
+
   // Test 1: findHorizons returns valid results
   const [rPlus, rMinus] = findHorizons(M, A, r0);
   finite(rPlus, 'r₊');
-  
+
   // Test 2: r₊ > 0
   assert(rPlus > 0, 'r₊ > 0');
-  
+
   // Test 3: F(r₊) ≈ 0
   if (rPlus !== null) {
     const fAtHorizon = lapseF(rPlus, M, A, r0);
     approx(fAtHorizon, 0, TOLERANCE * 100, 'F(r₊) ≈ 0');
   }
-  
+
   // Test 4: Horizon exists for standard parameters
   const [rPlusStd] = findHorizons(1.0, 0.3, 0.5);
   assert(rPlusStd > 2, 'Standard params have horizon at r₊ > 2');
@@ -206,12 +206,12 @@ function testHorizonFinding() {
 // ============================================
 function testEOSModels() {
   console.log('\n=== 6. Equation of State Models ===');
-  
+
   const M = 1.0, A = 0.3, r0 = 0.5;
   const a0 = 3.0;  // In positive-lapse region (F > 0)
   const f0 = lapseF(a0, M, A, r0);
   const sigma0 = -Math.sqrt(f0) / (2 * Math.PI * a0);
-  
+
   // Test each EOS model computes valid pressure
   const models = [
     { name: 'barotropic', params: { omega: -0.5 } },
@@ -220,7 +220,7 @@ function testEOSModels() {
     { name: 'cosmicChap', params: { Agc: 2, n_gc: 2 } },
     { name: 'modCosmicChap', params: { Amcc: 2, m_mcc: 2 } },
   ];
-  
+
   for (const model of models) {
     // Test that the EOS function returns valid values
     const sigma_eos = computeSigmaFromEOS(a0, a0, sigma0, model.name, model.params);
@@ -233,13 +233,13 @@ function testEOSModels() {
 // ============================================
 function testRK4Integrator() {
   console.log('\n=== 7. RK4 Integrator ===');
-  
+
   // Test 1: Derivative function returns correct structure
   const M = 1.0, A = 0.3, r0 = 0.5;
   const a0 = 3.0;  // In positive-lapse region (F > 0)
   const f0 = lapseF(a0, M, A, r0);
   const sigma0 = -Math.sqrt(f0) / (2 * Math.PI * a0);
-  
+
   // Simulate one RK4 step manually
   function deriv(state) {
     const [a, v] = state;
@@ -247,7 +247,7 @@ function testRK4Integrator() {
     const Vp = effPotPrime(a, a0, sigma0, 'barotropic', { omega: -0.5 });
     return [v, -Vp / 2];
   }
-  
+
   const s = [a0 * 1.01, 0]; // perturbed state
   const dt = 0.01;
   const k1 = deriv(s);
@@ -257,13 +257,97 @@ function testRK4Integrator() {
   const k3 = deriv(s3);
   const s4 = [s[0] + k3[0] * dt, s[1] + k3[1] * dt];
   const k4 = deriv(s4);
-  
+
   const a_new = s[0] + (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]) * dt / 6;
   const v_new = s[1] + (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]) * dt / 6;
-  
+
   finite(a_new, 'RK4 a_new');
   finite(v_new, 'RK4 v_new');
   assert(isFinite(a_new) && isFinite(v_new), 'RK4 step produces finite values');
+}
+
+// ============================================
+// SECTION 8: Grid Interpolation Tests
+// ============================================
+function testGridInterpolation() {
+  console.log('\n=== 8. Grid Interpolation Accuracy ===');
+
+  const M = 1.0, A = 0.3, r0 = 0.5;
+
+  // Compute grid bounds for test points
+  var rMinTest = Math.max(0.1 * M, 0.01);
+  var rMaxTest = Math.max(rMinTest + 8 * M, rMinTest * (M > 3 ? 4 : 3));
+
+  // Test 1: Grid construction succeeds
+  const gridBuilt = initFPGrid(M, A, r0);
+  assert(gridBuilt === true, 'initFPGrid returns true for valid params');
+
+  // Test 2: Grid interpolation accuracy — compare getFPrimeInterp vs lapseFPrime
+  // at multiple r values across the grid range
+  let maxRelError = 0;
+  for (let r = rMinTest + 0.01; r < rMaxTest - 0.01; r += (rMaxTest - rMinTest) / 20) {
+    const interpFP = getFPrimeInterp(r, M, A, r0);
+    const numerFP = lapseFPrime(r, M, A, r0);
+
+    finite(interpFP, `getFPrimeInterp(${r.toFixed(2)})`);
+    finite(numerFP, `lapseFPrime(${r.toFixed(2)})`);
+
+    const relErr = Math.abs(interpFP - numerFP) / (Math.abs(numerFP) || 1);
+    maxRelError = Math.max(maxRelError, relErr);
+
+    // Relative error should be < 1e-2 for linear interpolation on 256-point grid
+    // (higher near boundaries where grid spacing is coarser)
+    assert(relErr < 1e-2,
+      `Interp accuracy at r=${r.toFixed(2)}: rel_err=${relErr.toExponential(2)} < 1e-2`);
+  }
+  console.log(`  ✓ Max relative error across grid: ${maxRelError.toExponential(2)}`);
+
+  // Test 3: Grid rebuild on parameter change
+  destroyFPGrid();
+  initFPGrid(M, A, r0);
+  const fp1 = getFPrimeInterp(2.0, M, A, r0);
+
+  // Change parameter slightly (beyond tolerance)
+  initFPGrid(M * 1.001, A, r0);  // M changed by 0.1% > PARAM_TOL.M (1e-7)
+  const fp2 = getFPrimeInterp(2.0, M * 1.001, A, r0);
+
+  // Results should differ since grid was rebuilt with different params
+  assert(Math.abs(fp1 - fp2) > 1e-10,
+    `Grid rebuild produces different F' for changed params (diff=${(fp1-fp2).toExponential(2)})`);
+
+  // Test 4: Out-of-bounds clamping behavior
+  // Clamp below grid (use rMinTest - 0.1 which is below any grid)
+  const belowClamp = getFPrimeInterp(rMinTest - 0.1, M, A, r0);
+  finite(belowClamp, 'Below-grid clamping returns finite value');
+
+  // Clamp above grid (use rMaxTest + 0.1 which is above any grid)
+  const aboveClamp = getFPrimeInterp(rMaxTest + 0.1, M, A, r0);
+  finite(aboveClamp, 'Above-grid clamping returns finite value');
+
+  // The clamped values should be finite and reasonable (not NaN or Infinity)
+  assert(isFinite(belowClamp) && !isNaN(belowClamp), 'Below-grid clamp is finite and not NaN');
+  assert(isFinite(aboveClamp) && !isNaN(aboveClamp), 'Above-grid clamp is finite and not NaN');
+
+  // Test 5: Dirty flag mechanism
+  destroyFPGrid();
+  initFPGrid(M, A, r0);
+  setFPGridDirty();
+
+  // After dirty, next call should rebuild
+  const fpDirty = getFPrimeInterp(2.0, M, A, r0);
+  finite(fpDirty, 'getFPrimeInterp after setFPGridDirty returns finite');
+
+  // Test 6: Grid with different mass values
+  for (let testM of [0.5, 1.0, 3.0]) {
+    const built = initFPGrid(testM, A, r0);
+    assert(built === true, `Grid builds for M=${testM}`);
+    const fp = getFPrimeInterp(testM + 0.5, testM, A, r0);
+    finite(fp, `Interp for M=${testM}`);
+    destroyFPGrid();
+  }
+
+  // Cleanup
+  destroyFPGrid();
 }
 
 // ============================================
@@ -274,7 +358,7 @@ function runAllTests() {
   console.log('Wormhole Simulation Test Suite');
   console.log('Based on arXiv:2610.00131 (Zhong et al.)');
   console.log('========================================');
-  
+
   try {
     testLapseFunction();
     testSurfaceSigma();
@@ -283,7 +367,8 @@ function runAllTests() {
     testHorizonFinding();
     testEOSModels();
     testRK4Integrator();
-    
+    testGridInterpolation();
+
     console.log('\n========================================');
     console.log(`Results: ${passed}/${total} passed, ${failed} failed`);
     if (failed === 0) {
@@ -293,7 +378,7 @@ function runAllTests() {
       process.exit(1);
     }
     console.log('========================================\n');
-    
+
   } catch (e) {
     console.error('\n✗ Test error:', e.message);
     console.error(e.stack);
