@@ -111,15 +111,11 @@ var fp_grid_dirty = false;  // Flag: grid needs rebuild (params changed during s
  * Also considers the dirty flag: if fp_grid_dirty is true, we force a rebuild
  * even if _paramsMatch would pass (prevents stale grid after mid-sim parameter change).
  *
- * Important: When this returns false, the caller will call initFPGrid().
- * _paramsMatch clears fp_grid_dirty so that after a successful rebuild,
- * subsequent calls don't keep rebuilding on every interpolation step.
+ * Note: This function has NO side effects. The caller is responsible for clearing
+ * fp_grid_dirty after a successful initFPGrid() call to prevent infinite rebuilds.
  */
 function _paramsMatch(M_in, A_in, r0_val_in) {
-  if (fp_grid_dirty) {
-    fp_grid_dirty = false;  // Clear dirty so next call won't rebuild again
-    return false;
-  }
+  if (fp_grid_dirty) return false;  // Force rebuild if marked dirty
   var gp = last_fp_params;
   // Tolerances relaxed to prevent unnecessary rebuilds on UI slider interactions.
   if (!gp || Math.abs(gp.M - M_in) > PARAM_TOL.M
@@ -220,7 +216,11 @@ function initFPGrid(M, A, r0, N) {
  * setFPGridDirty() when UI parameters change, then the next getFPrimeInterp
  * call will rebuild before returning. */
 function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
-  if (!_paramsMatch(M_val_in, A_val_in, r0_val_in)) initFPGrid(M_val_in, A_val_in, r0_val_in);
+  if (!_paramsMatch(M_val_in, A_val_in, r0_val_in)) {
+    if (initFPGrid(M_val_in, A_val_in, r0_val_in)) {
+      fp_grid_dirty = false;  // Clear after successful rebuild
+    }
+  }
 
   var grid = fp_grid;
   if (!grid || grid.r.length < 2 || !isFinite(grid.r[0])) {
