@@ -11,7 +11,7 @@ function rk4Step(dt) {
 
   function deriv(state){const[a,v]=state;if(a<=0)return[0,0];
     let Vp;
-    if(eosModel==='barotropic')Vp=effPotPrimeBarotropicFast(a,a0_val,_sigma0,eosParams.omega||0);  // Uses global M_val/A_val/r0_val set by initSim() via getFPrimeInterp (#M3 fix: consistent with function signature — no extra args discarded).
+    if(eosModel==='barotropic')Vp=effPotPrimeBarotropicFast(a,a0_val,_sigma0,eosParams.omega||0);
     else Vp=effPotPrime(a,a0_val,_sigma0,eosModel,eosParams);
     return[v,-Vp/2];}
 
@@ -52,7 +52,3 @@ function mainLoop(timestamp) {
 }
 
 export { rk4Step, mainLoop };
-
-
-
-

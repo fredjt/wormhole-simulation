@@ -154,4 +154,5 @@ export { computeVpp, computeVppOptimized,
          calibrateOmega, barotropicVpp,
          calibratePhantomParams, phantomVpp,
          calibrateChaplyginParams,
-         calibrateCosmicChap, calibrateModCosmicChap };
+         calibrateCosmicChap, calibrateModCosmicChap,
+         effPotPrimeBarotropicFast, effPotPrimeBarotropicNumerical };
