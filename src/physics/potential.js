@@ -148,17 +148,14 @@ function _barotropicSigmaSq(a, a0, s0, omega) {
 /** Accurate first derivative for barotropic EOS — uses central-difference FD via lapseFPrime.
  * Used for calibration and stability analysis. Slower than the Fast variant but more accurate.
  *
- * V'(a) = F'(a) + 2π²·(1+ω) · a · σ₀²(a/a₀)^{-nₛᵢgma}   where n_σ = 2(1+ω)
+ * V'(a) = F'(a) + 8π²·ω · a₀^{-1} · σ(a)^{-2(1+w)}   where n_σ = 2(1+w)
  * Derived from: d/da [F - 4π² a² σ²] with σ ∝ (a/a₀)^{−nₛᵢgma}
  *
- * Note on the coefficient:
- *   The potential term is −4π²·a²·σ(a)². With σ(a) = σ₀·(a/a₀)^{−n_σ},
- *   d/da[−4π² a² σ²] = −8π² a σ² + 2 n_σ · 4π² a σ²
- *                       = (2n_σ − 1) · 4π² a σ².
- *   At equilibrium V'(a₀)=0, the F' term balances this; for the explicit sigma-derivative
- *   component alone we get: d/da[−4π² a² σ²] = (2n_σ − 1) · 4π² a σ².
- *   The code implements just the **second** part of this chain-rule expansion,
- *   yielding π²·(4+4ω)·a·σ₀²(a/a₀)^{−nₛᵢgma} = 2π²·(1+ω) · a · σ².
+ * Coefficient derivation:
+ *   V_term = −4π²·a²·σ(a)², where σ(a) = s0 · (a/a₀)^{(1+w)}.
+ *   d/da[V_term] = 8π²·ω · a^{−2w−1} · a₀^{2w+2} · s0²
+ *               = 8π²·ω / a × σ₀²(a/a₀)^{−2(1+w)}
+ *   The code computes this as: 8×π²×omega × _barotropicSigmaSq(...).
  *
  * Eq. references:
  *   • ArXiv:2610.00131 §B — barotropic EOS derivation
@@ -181,13 +178,13 @@ function _barotropicSigmaSq(a, a0, s0, omega) {
 function effPotPrimeBarotropicAccurate(a, a0, s0, omega, M_in, A_in, r0_in) {
   var p = resolveParams(M_in, A_in, r0_in);
   return lapseFPrime(a, p.M, p.A, p.r0) +
-         2.0 * Math.PI * Math.PI * 2.0 * (1.0 + omega) * a * _barotropicSigmaSq(a, a0, s0, omega);
+         8 * Math.PI * Math.PI * omega * a * _barotropicSigmaSq(a, a0, s0, omega);
 }
 
 /** Fast first derivative for barotropic EOS — uses precomputed F' grid interpolation.
  * Used during RK4 integration for performance (arXiv:2610.00131 §B).
  *
- * V'(a) = F'_interp(a) + 2π²·(1+ω) · a · σ₀²(a/a₀)^{-nₛᵢgma}   where n_σ = 2(1+ω)
+ * V'(a) = F'_interp(a) + 8π²·ω · a₀^{-1} · σ(a)^{-2(1+w)}   where n_σ = 2(1+w)
  * The grid-interpolated F' replaces the expensive hypergeom call per RK4 substep.
  *
  * Note on coefficient: same derivation as effPotPrimeBarotropicAccurate — see its docstring.
@@ -207,7 +204,7 @@ function effPotPrimeBarotropicAccurate(a, a0, s0, omega, M_in, A_in, r0_in) {
 function effPotPrimeBarotropicFast(a, a0, s0, omega, M_in, A_in, r0_in) {
   var p = resolveParams(M_in, A_in, r0_in);
   return getFPrimeInterp(a, p.M, p.A, p.r0) +
-         2.0 * Math.PI * Math.PI * 2.0 * (1.0 + omega) * a * _barotropicSigmaSq(a, a0, s0, omega);
+         8 * Math.PI * Math.PI * omega * a * _barotropicSigmaSq(a, a0, s0, omega);
 }
 
 // Export list:

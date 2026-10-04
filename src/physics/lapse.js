@@ -7,11 +7,9 @@
 var FD_FIRST_DERIV_H = 1e-7;
 var FD_SECOND_DERIV_H = 1e-5;
 
-// Rate-limit for out-of-bounds warnings during integration (max 10 per second).
-// Set DEBUG_GRID_INTERP=true to disable rate limiting for diagnostic purposes.
+// Rate-limit for out-of-bounds warnings during integration (~40/sec max when active).
+// Set DEBUG_GRID_INTERP=true to disable rate limiting for diagnostics.
 var DEBUG_GRID_INTERP = typeof globalThis !== 'undefined' && globalThis.DEBUG_GRID_INTERP;
-// Rate-limit counters and time tracking for out-of-bounds warnings (max ~40 per second).
-// Set DEBUG_GRID_INTERP=true to disable rate limiting for diagnostic purposes.
 var _warnCount = 0;
 var _warnLastTime = 0;
 var WARN_WINDOW_MS = 250; // ms — window length before counter resets
