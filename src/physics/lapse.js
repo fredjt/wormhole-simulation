@@ -73,6 +73,10 @@ function initFPGrid(M, A, r0, N) { // Removed unused _rmin_in/_rmax_in params (#
   var rMax = Math.max(rMin + 8, rMin * (M > 3 ? 4 : 3));
   if (!isFinite(rMax) || rMax <= rMin) { console.warn('initFPGrid: invalid grid bounds'); return false; }
 
+  // Compute dr BEFORE any loop — fixes #BUG-C1 from v5 review. Must be before tmpR/F/FP population.  
+  var dr = (rMax - rMin) / (N - 1);
+  if (!isFinite(dr)) { console.warn('initFPGrid: non-finite grid spacing'); return false; }
+
   // Use a temporary array to make construction atomic (#17 fix — partial grid never stored if loop fails).  
   var tmpR = new Float64Array(N), 
       tmpF = new Float64Array(N),
@@ -98,8 +102,7 @@ function initFPGrid(M, A, r0, N) { // Removed unused _rmin_in/_rmax_in params (#
     }
   }
 
-  dr = (rMax - rMin) / (N - 1);  // Compute after bounds validated.
-  for (var i = 0; i < N; ++i) { tmpR[i] = rMin + dr * i; }
+  tmpR = fp_grid ? fp_grid.r : tmpR; // Keep radii from first loop (already populated above) or new array.
 
   // Only commit the grid if ALL values were valid (atomic write #17 fix).  
   fp_grid = {r: tmpR, f: tmpF, fp: tmpFP};
