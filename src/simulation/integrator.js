@@ -11,7 +11,7 @@ function rk4Step(dt) {
 
   function deriv(state){const[a,v]=state;if(a<=0)return[0,0];
     let Vp;
-    if(eosModel==='barotropic')Vp=effPotPrimeBarotropicFast(a,a0_val,_sigma0,eosParams.omega||0);
+    if(eosModel==='barotropic')Vp=effPotPrimeBarotropicFast(a,a0_val,_sigma0,eosParams.omega||0,M_val,A_val,r0_val);
     else Vp=effPotPrime(a,a0_val,_sigma0,eosModel,eosParams);
     return[v,-Vp/2];}
 

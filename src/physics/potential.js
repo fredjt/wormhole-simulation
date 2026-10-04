@@ -141,31 +141,45 @@ function calibrateModCosmicChap(a0, M, A, r0) {
  * EOS models — those require the general effPot()/effPotPrime() path which correctly
  * dispatches through computeSigmaFromEOS.
  *
- * Uses globals M_val/A_val/r0_val set by initSim() — same convention as calibrateOmega(), barotropicVpp(). */
-function effPotPrimeBarotropicNumerical(a, a0, s0, omega) {
+ * Accepts explicit (M, A, r₀) parameters with fallback to module-level globals.
+ * @param {number} a - Current scale factor
+ * @param {number} a0 - Equilibrium scale factor
+ * @param {number} s0 - Surface tension at equilibrium
+ * @param {number} omega - EOS parameter
+ * @param {number} [M] - Black hole mass (falls back to M_val if omitted)
+ * @param {number} [A] - String tension parameter (falls back to A_val if omitted)
+ * @param {number} [r0] - Scale factor parameter (falls back to r0_val if omitted)
+ * @returns {number} First derivative of effective potential */
+function effPotPrimeBarotropicNumerical(a, a0, s0, omega, M_in, A_in, r0_in) {
+  const _M = M_in ?? M_val;
+  const _A = A_in ?? A_val;
+  const _r0 = r0_in ?? r0_val;
   const n_sigma = 2.0 * (1.0 + omega);
   // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ)
   const sigma_sq_scaled = (s0 * s0) * Math.pow(a / a0, -n_sigma);
-  return lapseFPrime(a, M_val, A_val, r0_val) +
+  return lapseFPrime(a, _M, _A, _r0) +
          2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;
 }
 /** Fast numerical first derivative for barotropic EOS — uses precomputed F' grid interpolation.
  * Used during RK4 integration for performance. Faster than Numerical variant but uses grid interpolation.
  *
- * ⚠️ Global state dependency: reads M_val, A_val, r0_val from the module-level global scope
- * (set by initSim()). This function should only be called during active simulation when these
- * globals are guaranteed to be current. For batch/offline use, pass parameters explicitly
- * or ensure globals are synchronized before calling.
+ * Accepts explicit (M, A, r₀) parameters with fallback to module-level globals.
  * @param {number} a - Current scale factor
  * @param {number} a0 - Equilibrium scale factor
  * @param {number} s0 - Surface tension at equilibrium
  * @param {number} omega - EOS parameter
+ * @param {number} [M] - Black hole mass (falls back to M_val if omitted)
+ * @param {number} [A] - String tension parameter (falls back to A_val if omitted)
+ * @param {number} [r0] - Scale factor parameter (falls back to r0_val if omitted)
  * @returns {number} First derivative of effective potential */
-function effPotPrimeBarotropicFast(a, a0, s0, omega) {
+function effPotPrimeBarotropicFast(a, a0, s0, omega, M_in, A_in, r0_in) {
+  const _M = M_in ?? M_val;
+  const _A = A_in ?? A_val;
+  const _r0 = r0_in ?? r0_val;
   const n_sigma = 2.0 * (1.0 + omega);
   // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ)
   const sigma_sq_scaled = (s0 * s0) * Math.pow(a / a0, -n_sigma);
-  return getFPrimeInterp(a, M_val, A_val, r0_val) +
+  return getFPrimeInterp(a, _M, _A, _r0) +
          2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;
 }
 // Export list:

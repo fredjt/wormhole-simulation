@@ -38,11 +38,9 @@ function setFPGridDirty() {
   fp_grid_dirty = true;
 }
 
-// Parameter tolerance for grid rebuild check — chosen empirically to sit
-// between UI slider quantization noise (~0.01 step) and grid numerical
-// precision floor (~hi2p ≈ 4e-5). Values prevent spurious rebuilds from
-// floating-point noise while catching genuine parameter changes.
-var PARAM_TOL = { M: 1e-7, A: 1e-6, r0: 1e-7 };
+// Parameter tolerance for grid rebuild check — aligned with UI slider quantization (~0.01 step).
+// Values prevent spurious rebuilds from repeated slider interactions with the same value.
+var PARAM_TOL = { M: 0.01, A: 0.01, r0: 0.01 };
 
 function hypergeom2F1(a, b, c, z) {
   // Compute _2F₁(a,b;c;z) using series expansion with analytic continuation.
@@ -58,13 +56,13 @@ function hypergeom2F1(a, b, c, z) {
   }
 
   // Piecewise iteration count scaled with |z|.
-  // Actual iteration limits: ≤100 for |z|≤0.3, ≤540 for 0.3<|z|≤0.9, ≤~750 for |z|>0.9.
+  // Actual iteration limits: ~10–65 for |z|≤0.3, ≤540 for 0.3<|z|≤0.9, ≤~750 for |z|>0.9.
   // The tolerance check (Math.abs(term) < tol * |result|) normally catches early
   // convergence well before these caps, so the max values are safety nets.
   var absZ = Math.abs(z);
   if (absZ <= 0.3) {
-    // Minimum 100 iterations ensures convergence near the |z|=0.3 branch boundary.
-    return series(a, b, c, z, Math.max(Math.min(150 * absZ + 20, 80), 100), 1e-14);
+    // Scales from ~10 at z=0 (trivial convergence) to ~65 near |z|=0.3 branch boundary.
+    return series(a, b, c, z, Math.min(Math.max(150 * absZ + 10, 10), 100), 1e-14);
   } else if (absZ <= 0.9) {
     // Smooth formula: (3 - absZ) * 200 gives ~420 at |z|=0.9, ~540 at |z|=0.3.
     var iter = Math.max(Math.ceil((3 - absZ) * 200), 100);
@@ -204,22 +202,22 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
 
   var lo = _binarySearch(0, grid.r.length - 1, grid.r, r);
 
-  if (r < fp_grid.r[lo]) {
-    if (_shouldWarn()) console.warn(`getFPrimeInterp: r=${r} below grid min ${fp_grid.r[lo]}, clamping to first point`); _markClampingDetected();
-    return fp_grid.fp[lo];
+  if (r < grid.r[lo]) {
+    if (_shouldWarn()) console.warn(`getFPrimeInterp: r=${r} below grid min ${grid.r[lo]}, clamping to first point`); _markClampingDetected();
+    return grid.fp[lo];
   }
-  if (r > fp_grid.r[grid.r.length - 1]) {
-    if (_shouldWarn()) console.warn(`getFPrimeInterp: r=${r} above grid max ${fp_grid.r[grid.r.length - 1]}, clamping to last point`); _markClampingDetected();
-    return fp_grid.fp[grid.r.length - 1];
+  if (r > grid.r[grid.length - 1]) {
+    if (_shouldWarn()) console.warn(`getFPrimeInterp: r=${r} above grid max ${grid.r[grid.length - 1]}, clamping to last point`); _markClampingDetected();
+    return grid.fp[grid.length - 1];
   }
 
   var ri_lo = grid.r[lo], ri_hi = grid.r[lo + 1];
 
   // Guard against division by zero.
   var denom = ri_hi - ri_lo;
-  if (!isFinite(denom) || Math.abs(denom) < 1e-20) return fp_grid.fp[lo];
+  if (!isFinite(denom) || Math.abs(denom) < 1e-20) return grid.fp[lo];
 
-  return fp_grid.fp[lo] + (fp_grid.fp[lo + 1] - fp_grid.fp[lo]) * ((r - ri_lo) / denom);
+  return grid.fp[lo] + (grid.fp[lo + 1] - grid.fp[lo]) * ((r - ri_lo) / denom);
 }
 
 
@@ -262,6 +260,6 @@ function _markClampingDetected() {
 function lapseFDblPrime(r, M, A, r0, h) { if (!h) h = FD_SECOND_DERIV_H; return (lapseF(r + h, M, A, r0) - 2 * lapseF(r, M, A, r0) + lapseF(r - h, M, A, r0)) / (h * h); }
 
 /** Numerical first derivative of lapseF using central difference. */
-function lapseFPrime(r, M, A, r0, h) { if (!h) h = FD_FIRST_DERIV_H; return (lapseF(r + h, M, A, r0) - lapseF(r - h, M, A, r0)) / (2 * h); }
+function lapseFPrime(r, M, A, r0, h) { if (h === undefined || !isFinite(h)) h = FD_FIRST_DERIV_H; return (lapseF(r + h, M, A, r0) - lapseF(r - h, M, A, r0)) / (2 * h); }
 
 export { lapseF, lapseFPrime, lapseFDblPrime, initFPGrid, getFPrimeInterp, resetWarnCounters, destroyFPGrid, setFPGridDirty };
