@@ -105,9 +105,9 @@ function initFPGrid(M, A, r0, N) {
 
       if (!isFinite(tmpF[i])) throw new Error('NaN in F');  // Abort grid construction on bad value.
 
-      var hi2p = Math.max(rMin * 5e-7, dr / (N + 4));  
-      tmpFP[i] = isFinite(hi2p) ? 
-        ((lapseF(ri + hi2p, M, A, r0) - lapseF(ri - hi2p, M, A, r0)) / (2.0 * hi2p)) : 0;
+      var hi2p = Math.max(rMin * 5e-7, dr / (N + 4));
+      if (!isFinite(hi2p)) throw 'non-finite hi2p at index ' + i;
+      tmpFP[i] = (lapseF(ri + hi2p, M, A, r0) - lapseF(ri - hi2p, M, A, r0)) / (2.0 * hi2p);
 
       if (!isFinite(tmpFP[i])) throw new Error('NaN in dF/dr');
         } catch(e) {
@@ -137,11 +137,11 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
 
   var lo = _binarySearch(0, grid.r.length - 1, grid.r, r);
 
-  if (r <= fp_grid.r[lo]) {
+  if (r < fp_grid.r[lo]) {
     console.warn(`getFPrimeInterp: r=${r} below grid min ${fp_grid.r[lo]}, clamping to first point`);
     return fp_grid.fp[lo];
   }
-  if (r >= fp_grid.r[grid.r.length - 1]) {
+  if (r > fp_grid.r[grid.r.length - 1]) {
     console.warn(`getFPrimeInterp: r=${r} above grid max ${fp_grid.r[grid.r.length - 1]}, clamping to last point`);
     return fp_grid.fp[grid.r.length - 1];
   }
@@ -164,11 +164,11 @@ function getFInterp(r, M_val_in, A_val_in, r0_val_in) {
 
   var lo = _binarySearch(0, grid.r.length - 1, grid.r, r);
 
-  if (r <= fp_grid.r[lo]) {
+  if (r < fp_grid.r[lo]) {
     console.warn(`getFInterp: r=${r} below grid min ${fp_grid.r[lo]}, clamping to first point`);
     return fp_grid.f[lo];
   }
-  if (r >= fp_grid.r[grid.r.length - 1]) {
+  if (r > fp_grid.r[grid.r.length - 1]) {
     console.warn(`getFInterp: r=${r} above grid max ${fp_grid.r[grid.r.length - 1]}, clamping to last point`);
     return fp_grid.f[grid.r.length - 1];
   }

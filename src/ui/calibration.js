@@ -166,8 +166,8 @@ function updateHorizonInfo(){
 function calibrateAtA0(){const f_a0=lapseF(a0_val,M_val,A_val,r0_val);if(f_a0<=0)return;switch(eosModel){case'barotropic':eosParams.omega=calibrateOmega(a0_val,M_val,A_val,r0_val);break;case'phantom':eosParams.Ap=calibratePhantomParams(a0_val,M_val,A_val,r0_val,eosParams);break;case'chaplygin':eosParams.Ac=calibrateChaplyginParams(a0_val,M_val,A_val,r0_val);break;case'cosmicChap':eosParams.Agc=calibrateCosmicChap(a0_val,M_val,A_val,r0_val);break;case'modCosmicChap':eosParams.Amcc=calibrateModCosmicChap(a0_val,M_val,A_val,r0_val);break;}calibrated=true;updateEosParamsUI();resetSim();}
 
 function initSim(){readParams();
-// Pre-compute F'(r) grid for fast interpolation during RK4 integration (barotropic EOS).
-initFPGrid(M_val, A_val, r0_val);
+// Pre-compute F'(r) grid only for barotropic EOS (used in RK4 integration).
+if(eosModel==='barotropic') initFPGrid(M_val, A_val, r0_val);
 const f_a0=lapseF(a0_val,M_val,A_val,r0_val);if(f_a0<=0)return;let deltaAPct=parseFloat(document.getElementById('sliderDeltaA')?.value || '0.01');if(document.getElementById('chkSmallPerturb').checked)deltaAPct=0.01;v_current=parseFloat(document.getElementById('sliderV0')?.value || '-0.1');tau=0;a_current=a0_val*(1+deltaAPct/100);timeHistory=[{tau:0,a:a_current,v:v_current}];phaseHistory=[{a:a_current,v:v_current}];calibrated=true;}
 
 function resetSim(){simRunning=false;simPaused=false;readParams();initSim();}
