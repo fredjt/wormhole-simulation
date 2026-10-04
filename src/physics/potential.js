@@ -141,7 +141,12 @@ function _barotropicSigmaSq(a, a0, s0, omega) {
 /** Accurate first derivative for barotropic EOS — uses central-difference FD via lapseFPrime.
  * Used for calibration and stability analysis. Slower than the Fast variant but more accurate.
  *
- * V'(a) = F'(a) + 4π²·n_σ · a · σ₀²(a/a₀)^{-n_σ}  where n_σ = 2(1+ω)
+ * V'(a) = F'(a) + 4π²·n_σ · a · σ₀²(a/a₀)^{-n_σ}   where n_σ = 2(1+ω)
+ * Derived from: d/da [F - 4π² a² σ²] with σ ∝ a^{-n_σ}
+ *
+ * Eq. references:
+ *   • ArXiv:2610.00131 §B — barotropic EOS derivation
+ *   • n_σ = 2(1+ω) follows from energy conservation for p = ωρ
  *
  * ⚠️ Barotropic-only: This function implements the analytical shortcut derived specifically
  * for the barotropic EOS model. It should NOT be called with phantom, chaplygin, or other
@@ -166,7 +171,13 @@ function effPotPrimeBarotropicAccurate(a, a0, s0, omega, M_in, A_in, r0_in) {
 }
 
 /** Fast first derivative for barotropic EOS — uses precomputed F' grid interpolation.
- * Used during RK4 integration for performance. Faster than Accurate variant but uses grid interpolation.
+ * Used during RK4 integration for performance (arXiv:2610.00131 §B).
+ *
+ * V'(a) = F'_interp(a) + 4π²·n_σ · a · σ₀²(a/a₀)^{-n_σ}   where n_σ = 2(1+ω)
+ * The grid-interpolated F' replaces the expensive hypergeom call per RK4 substep.
+ *
+ * Eq. references:
+ *   • Same derivation as effPotPrimeBarotropicAccurate — see its docstring.
  *
  * Accepts explicit (M, A, r₀) parameters with fallback to module-level globals.
  * @param {number} a - Current scale factor

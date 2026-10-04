@@ -44,6 +44,18 @@ function setFPGridDirty() {
 // Values prevent spurious rebuilds from repeated slider interactions with the same value.
 var PARAM_TOL = { M: 0.01, A: 0.01, r0: 0.01 };
 
+/* ---------------------------------------------------------------------------
+ * Named constants for grid bounds computation — see initFPGrid() PHYSICAL
+ * JUSTIFICATION comment above.  These replace magic numbers so that future
+ * maintainers can adjust them in one place.
+ */
+var GRID_RMIN_FRACTION = 0.1;    // rMin floor: max(0.1*M, 0.01)
+var GRID_ABSOLUTE_MIN = 0.01;     // Absolute minimum radius (prevents unphysically small grid for low mass)
+var RMAX_OFFSET_MULTIPLIER = 8;   // + 8*M term — covers up to ~8× mass scale
+var MASS_THRESHOLD_FACTOR = 3;    // Switch between factor-based and offset-based scaling
+var GRID_MAX_FACTOR_HIGH_MASS = 4; // rMin * N when M > threshold (wider grid)
+var GRID_MAX_FACTOR_LOW_MASS = 3;   // rMin * N when M ≤ threshold
+
 function hypergeom2F1(a, b, c, z) {
   // Compute _2F₁(a,b;c;z) using series expansion with analytic continuation.
   function series(aa, bb, cc, zz, maxIter, tol) {
@@ -135,17 +147,22 @@ function initFPGrid(M, A, r0, N) {
   // For typical wormhole parameters, 256 points gives <1e-4 interpolation error.
   if (!N || !isFinite(N)) N = 256;
 
-    var rMin = Math.max(0.1 * M, 0.01); // Floor at 0.01 prevents unphysically small grid for low mass.
-  if (!isFinite(rMin)) { console.warn('initFPGrid: non-finite rMin'); return false; }
+  var rMin = Math.max(GRID_RMIN_FRACTION * M, GRID_ABSOLUTE_MIN);
+  if (!isFinite(rMin)) {
+    console.warn('initFPGrid: non-finite rMin');
+    return false;
+  }
   // Grid bounds: scale rMax with mass to cover expected oscillation ranges.
-  // For large M, horizons and stable throats are farther out, so we need
-  // a wider grid. The 8*M term ensures coverage up to ~8× mass scale.
-  // For unstable barotropic trajectories that expand rapidly, rMax may be
-  // exceeded — the clamping path returns the boundary F' value.
-  var rMax = Math.max(rMin + 8 * M, rMin * (M > 3 ? 4 : 3));
+  // PHYSICAL JUSTIFICATION:
+  //   - For Schwarzschild-like geometries the outermost horizon is at ~2M,
+  //     and throat oscillations typically stay within [~0.1 M, ~3–8 M].
+  //   - The "+ RMAX_OFFSET_MULTIPLIER*M" term ensures coverage up to
+  //     ~RMAX_OFFSET_MULTIPLIER× mass scale for unstable barotropic trajectories.
+  var rMax = Math.max(rMin + RMAX_OFFSET_MULTIPLIER * M,
+                      rMin * (M > MASS_THRESHOLD_FACTOR ? GRID_MAX_FACTOR_HIGH_MASS : GRID_MAX_FACTOR_LOW_MASS));
   if (!isFinite(rMax) || rMax <= rMin) { console.warn('initFPGrid: invalid grid bounds'); return false; }
 
-    // Compute grid spacing.
+  // Compute grid spacing.
   var dr = (rMax - rMin) / (N - 1);
   if (!isFinite(dr)) { console.warn('initFPGrid: non-finite grid spacing'); return false; }
 
@@ -157,47 +174,58 @@ function initFPGrid(M, A, r0, N) {
   for (var i = 0; i < N; ++i) {
     var ri = rMin + dr * i;
     try {
-        if (!isFinite(ri)) throw 'non-finite radius at index ' + i;
-        tmpR[i] = ri;
-        tmpF[i] = lapseF(ri, M, A, r0);
+      if (!isFinite(ri)) {
+        throw 'non-finite radius at index ' + i;
+      }
+      tmpR[i] = ri;
+      tmpF[i] = lapseF(ri, M, A, r0);
 
+      // Abort grid construction on bad value.
+      if (!isFinite(tmpF[i])) {
+        throw new Error('NaN in F');
+      }
 
-        if (!isFinite(tmpF[i])) throw new Error('NaN in F');  // Abort grid construction on bad value.
+      // Grid derivative step size: adaptive based on local grid spacing.
+      // Differs from FD_FIRST_DERIV_H (1e-7) used in lapseFPrime() for calibration.
+      // Grid uses a larger step (typically ~dr/260) for numerical stability during
+      // grid construction — small h values can cause cancellation error with hypergeom.
+      var hi2p = Math.max(rMin * 5e-7, dr / (N + 4));
 
-        // Grid derivative step size: adaptive based on local grid spacing.
-        // Differs from FD_FIRST_DERIV_H (1e-7) used in lapseFPrime() for calibration.
-        // Grid uses a larger step (typically ~dr/260) for numerical stability during
-        // grid construction — small h values can cause cancellation error with hypergeom.
-        var hi2p = Math.max(rMin * 5e-7, dr / (N + 4));
-        if (!isFinite(hi2p)) throw 'non-finite hi2p at index ' + i;
+      if (!isFinite(hi2p)) {
+        throw 'non-finite hi2p at index ' + i;
+      }
 
-        // Use central difference when both sides are valid; fall back to
-        // one-sided differences at boundaries where ri ± hi2p would go out of bounds.
-        var hiLeft = Math.max(ri - rMin, 0);
-        var hiRight = rMax - ri;
-        if (hiLeft >= hi2p && hiRight >= hi2p) {
-          // Central difference — most accurate.
-          tmpFP[i] = (lapseF(ri + hi2p, M, A, r0) - lapseF(ri - hi2p, M, A, r0)) / (2.0 * hi2p);
-        } else if (hiLeft >= hi2p) {
-          // Left side available, right side out of bounds — use backward difference.
-          tmpFP[i] = (lapseF(ri, M, A, r0) - lapseF(ri - hi2p, M, A, r0)) / hi2p;
-        } else if (hiRight >= hi2p) {
-          // Right side available, left side out of bounds — use forward difference.
-          tmpFP[i] = (lapseF(ri + hi2p, M, A, r0) - lapseF(ri, M, A, r0)) / hi2p;
+      // Use central difference when both sides are valid; fall back to
+      // one-sided differences at boundaries where ri ± hi2p would go out of bounds.
+      var hiLeft = Math.max(ri - rMin, 0);
+      var hiRight = rMax - ri;
+      if (hiLeft >= hi2p && hiRight >= hi2p) {
+        // Central difference — most accurate.
+        tmpFP[i] = (lapseF(ri + hi2p, M, A, r0) - lapseF(ri - hi2p, M, A, r0)) / (2.0 * hi2p);
+      } else if (hiLeft >= hi2p) {
+        // Left side available, right side out of bounds — use backward difference.
+        tmpFP[i] = (lapseF(ri, M, A, r0) - lapseF(ri - hi2p, M, A, r0)) / hi2p;
+      } else if (hiRight >= hi2p) {
+        // Right side available, left side out of bounds — use forward difference.
+        tmpFP[i] = (lapseF(ri + hi2p, M, A, r0) - lapseF(ri, M, A, r0)) / hi2p;
+      } else {
+        // Both sides out of bounds — use smallest available step.
+        var h = Math.min(hi2p, hiLeft + hiRight);
+        if (h > 0 && isFinite(lapseF(ri + h, M, A, r0))) {
+          tmpFP[i] = (lapseF(ri + h, M, A, r0) - lapseF(ri, M, A, r0)) / h;
         } else {
-          // Both sides out of bounds — use smallest available step.
-          var h = Math.min(hi2p, hiLeft + hiRight);
-          if (h > 0 && isFinite(lapseF(ri + h, M, A, r0))) {
-            tmpFP[i] = (lapseF(ri + h, M, A, r0) - lapseF(ri, M, A, r0)) / h;
-          } else {
-            throw new Error('cannot compute derivative at boundary point ri=' + ri);
-          }
+          throw new Error('cannot compute derivative at boundary point ri=' + ri);
         }
+      }
 
-        if (!isFinite(tmpFP[i])) throw new Error('NaN in dF/dr');
-    } catch(e) {
-        console.warn('initFPGrid abort at index ' + i + ': params={' + M + ',' + A + ',' + r0 + ',N=' + N + '} err=' + e);
-        return false;
+      if (!isFinite(tmpFP[i])) {
+        throw new Error('NaN in dF/dr');
+      }
+    } catch (e) {
+      console.warn(
+        'initFPGrid abort at index ' + i + ': params={' + M + ',' + A + ',' + r0
+          + ',N=' + N + '} err=' + e);
+      return false;
     }
   }
 
@@ -257,6 +285,9 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
  * Requires: hi > lo (at least two elements). Callers must ensure grid.r.length >= 2.
  * Returns lo unchanged if hi <= lo (degenerate case). */
 function _binarySearch(lo, hi, arr, r) {
+  // NOTE: We use `>>> 1` instead of `(lo+hi)>>0` because grid arrays are
+  // always non-negative length, so overflow is impossible. The logical right-
+  // shift produces the same result as floor division by 2 for all valid inputs.
   if (hi <= lo) return lo;
   while (hi - lo > 1) { var mid = ((lo + hi) >>> 1); if (arr[mid] <= r) lo = mid; else hi = mid; }
   return lo;

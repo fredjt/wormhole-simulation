@@ -167,14 +167,43 @@ function updateHorizonInfo(){
 
 function calibrateAtA0(){const f_a0=lapseF(a0_val,M_val,A_val,r0_val);if(f_a0<=0)return;switch(eosModel){case'barotropic':eosParams.omega=calibrateOmega(a0_val,M_val,A_val,r0_val);break;case'phantom':eosParams.Ap=calibratePhantomParams(a0_val,M_val,A_val,r0_val,eosParams);break;case'chaplygin':eosParams.Ac=calibrateChaplyginParams(a0_val,M_val,A_val,r0_val);break;case'cosmicChap':eosParams.Agc=calibrateCosmicChap(a0_val,M_val,A_val,r0_val);break;case'modCosmicChap':eosParams.Amcc=calibrateModCosmicChap(a0_val,M_val,A_val,r0_val);break;}calibrated=true;updateEosParamsUI();resetSim();}
 
-function initSim(){readParams();
-// Reset rate-limit counters so out-of-bounds warnings are visible in new sessions.
-resetWarnCounters();
-// Pre-compute F'(r) grid only for barotropic EOS (used in RK4 integration).
-if(eosModel==='barotropic') initFPGrid(M_val, A_val, r0_val);
-const f_a0=lapseF(a0_val,M_val,A_val,r0_val);if(f_a0<=0)return;let deltaAPct=parseFloat(document.getElementById('sliderDeltaA')?.value || '0.01');if(document.getElementById('chkSmallPerturb').checked)deltaAPct=0.01;v_current=parseFloat(document.getElementById('sliderV0')?.value || '-0.1');tau=0;a_current=a0_val*(1+deltaAPct/100);timeHistory=[{tau:0,a:a_current,v:v_current}];phaseHistory=[{a:a_current,v:v_current}];calibrated=true;}
+/** Initialize the simulation state with current parameters.
+ * Called on every parameter change (via resetSim) and at startup. */
+function initSim() {
+  readParams();
 
-function resetSim(){simRunning=false;simPaused=false;readParams();initSim();}
+  // Reset rate-limit counters so out-of-bounds warnings are visible in new sessions.
+  resetWarnCounters();
+
+  // Pre-compute F'(r) grid only for barotropic EOS (used in RK4 integration).
+  if (eosModel === 'barotropic') {
+    initFPGrid(M_val, A_val, r0_val);
+  }
+
+  var f_a0 = lapseF(a0_val, M_val, A_val, r0_val);
+  if (f_a0 <= 0) return;
+
+  // Read perturbation and initial velocity from UI.
+  var deltaAPct = parseFloat(document.getElementById('sliderDeltaA')?.value || '0.01');
+  if (document.getElementById('chkSmallPerturb').checked) {
+    deltaAPct = 0.01;
+  }
+
+  v_current = parseFloat(document.getElementById('sliderV0')?.value || '-0.1');
+  tau = 0;
+  a_current = a0_val * (1 + deltaAPct / 100);
+  timeHistory = [{tau: 0, a: a_current, v: v_current}];
+  phaseHistory = [{a: a_current, v: v_current}];
+  calibrated = true;
+}
+
+/** Reset the simulation — stops any running sim and re-initialises from current UI params. */
+function resetSim() {
+  simRunning = false;
+  simPaused = false;
+  readParams();
+  initSim();
+}
 
 let lastTime=0;
 
