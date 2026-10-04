@@ -140,9 +140,6 @@ function resolveParams(mIn, aIn, r0In) {
   return { M: mIn ?? M_val, A: aIn ?? A_val, r0: r0In ?? r0_val };
 }
 
-/** Compute σ²(a) for barotropic EOS: σ₀²·(a/a₀)^{−4(1+w)}.
- * Derived from `computeSigmaFromEOS` which returns s0 · (a/a₀)^{-2(1+w)}, so 
- * σ² ∝ (a/a₀)^{-4(1+w)} = -2×n_σ where n_σ=2(1+ω). */
 /** @internal Compute σ²(a) for barotropic EOS: σ₀²·(a/a₀)^{−4(1+w)}.
  * NOT validated — callers must ensure omega is valid (NaN → NaN result). */
 function _barotropicSigmaSq(a, a0, s0, omega) {
