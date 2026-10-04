@@ -36,7 +36,7 @@ function hypergeom2F1(a, b, c, z) {
 }
 
 function lapseF(r, M, A, r0) {  
-  if (r <= 0 || !isFinite(M) || !isFinite(A) || !isFinite(r0)) return NaN; // #M3 — guard against non-finite inputs.
+  if (r <= 0 || !isFinite(M) || !isFinite(A) || !isFinite(r0)) return NaN; // #M3 from v5 — guard against non-finite inputs.
   var ratio = r / r0;
   // Compute -r^4/r_0^4 correctly as -(x² * x²).  
   var z = -(ratio * ratio) * (ratio * ratio);
@@ -68,7 +68,7 @@ function _paramsMatch(M_in, A_in, r0_val_in) {
 function initFPGrid(M, A, r0, N) { // Removed unused _rmin_in/_rmax_in params (#4/#11 fix from v2 review).
   if (!N || !isFinite(N)) N = 256;
 
-  var rMin = Math.max(0.1 * M || 0.05, 0.01);   // Physics-derived defaults: scale with mass but floor at 0.01 (#16 fix — no unphysically small grid).  
+  var rMin = Math.max(0.1 * M || 0.05, 0.01);   // Physics-derived defaults: scale with mass but floor at 0.01 (#M3 from v4 fix — no unphysically small grid).  
   if (!isFinite(rMin)) { console.warn('initFPGrid: non-finite rMin'); return false; }
   var rMax = Math.max(rMin + 8, rMin * (M > 3 ? 4 : 3));
   if (!isFinite(rMax) || rMax <= rMin) { console.warn('initFPGrid: invalid grid bounds'); return false; }
@@ -87,7 +87,8 @@ function initFPGrid(M, A, r0, N) { // Removed unused _rmin_in/_rmax_in params (#
     if (!isFinite(ri)) return false; // Early abort on non-finite radius.
 
     try {
-      tmpF[i] = lapseF(ri, M, A, r0);  // #M3 — guard against NaN from hypergeom overflow (#14).  
+      tmpR[i] = ri;   // #BUG-C2 from v6 review — store radii so binary search works correctly! 
+      tmpF[i] = lapseF(ri, M, A, r0);  // #M3 from v5 — guard against NaN from hypergeom overflow (#14).  
 
       if (!isFinite(tmpF[i])) throw new Error('NaN in F');  // Abort grid construction on bad value.
 
@@ -102,16 +103,14 @@ function initFPGrid(M, A, r0, N) { // Removed unused _rmin_in/_rmax_in params (#
     }
   }
 
-  tmpR = fp_grid ? fp_grid.r : tmpR; // Keep radii from first loop (already populated above) or new array.
-
-  // Only commit the grid if ALL values were valid (atomic write #17 fix).  
+  // Only commit the grid if ALL values were valid (atomic write #17 fix). No second loop needed.
   fp_grid = {r: tmpR, f: tmpF, fp: tmpFP};
   last_fp_params = {M: M, A: A, r0: r0}; 
   return true; // Indicate successful construction.
 }
 
 /** Evaluate pre-computed F'(r) via linear interpolation on the grid (with explicit params #1 fix). */  
-function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {  // Explicit param names (#C2: _in suffix to distinguish from globals — consistent with this function's signature only; see naming convention note in JSDoc below).
+function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {  // Explicit param names (#M4: _in suffix to distinguish from globals — consistent naming within this function's signature; initFPGridIfNeeded uses plain names matching calibrateOmega convention).
   if (!_paramsMatch(M_val_in, A_val_in, r0_val_in)) initFPGrid(M_val_in, A_val_in, r0_val_in);
 
   var grid = fp_grid; 
@@ -136,7 +135,7 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {  // Explicit param 
 }
 
 /** Evaluate pre-computed F(r) via linear interpolation on the grid. */
-function getFInterp(r, M_val_in, A_val_in, r0_val_in) {  // Explicit param names (#C2: consistent with getFPrimeInterp).
+function getFInterp(r, M_val_in, A_val_in, r0_val_in) {  // Explicit param names (#M4: consistent with getFPrimeInterp).
   if (!_paramsMatch(M_val_in, A_val_in, r0_val_in)) initFPGrid(M_val_in, A_val_in, r0_val_in);
 
   var grid = fp_grid; 
