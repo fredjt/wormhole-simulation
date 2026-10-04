@@ -26,7 +26,10 @@ function hypergeom2F1(a, b, c, z) {
   // Piecewise iteration count scaled with |z|.
   var absZ = Math.abs(z);  
   if (absZ <= 0.3) {
-    return series(a, b, c, z, Math.min(150 * absZ + 20, 80), 1e-14);
+    // Ensure minimum 100 iterations near boundary with next branch to avoid
+    // ~8× discontinuity at |z|=0.3 (65 vs 540 iterations).  Tolerance check
+    // (Math.abs(term) < tol * |result|) normally catches early convergence.
+    return series(a, b, c, z, Math.max(Math.min(150 * absZ + 20, 80), 100), 1e-14);
   } else if (absZ <= 0.9) {  
     var iter = Math.max(Math.ceil((3 - absZ) * 200), 100);
     return series(a, b, c, z, iter, 1e-14);
@@ -134,8 +137,14 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
 
   var lo = _binarySearch(0, grid.r.length - 1, grid.r, r);
 
-  if (r <= fp_grid.r[lo]) return fp_grid.fp[lo];
-  if (r >= fp_grid.r[grid.r.length - 1]) return fp_grid.fp[grid.r.length - 1];
+  if (r <= fp_grid.r[lo]) {
+    console.warn(`getFPrimeInterp: r=${r} below grid min ${fp_grid.r[lo]}, clamping to first point`);
+    return fp_grid.fp[lo];
+  }
+  if (r >= fp_grid.r[grid.r.length - 1]) {
+    console.warn(`getFPrimeInterp: r=${r} above grid max ${fp_grid.r[grid.r.length - 1]}, clamping to last point`);
+    return fp_grid.fp[grid.r.length - 1];
+  }
 
   var ri_lo = grid.r[lo], ri_hi = grid.r[lo + 1];
 
@@ -155,8 +164,14 @@ function getFInterp(r, M_val_in, A_val_in, r0_val_in) {
 
   var lo = _binarySearch(0, grid.r.length - 1, grid.r, r);
 
-  if (r <= fp_grid.r[lo]) return fp_grid.f[lo];
-  if (r >= fp_grid.r[grid.r.length - 1]) return fp_grid.f[grid.r.length - 1];
+  if (r <= fp_grid.r[lo]) {
+    console.warn(`getFInterp: r=${r} below grid min ${fp_grid.r[lo]}, clamping to first point`);
+    return fp_grid.f[lo];
+  }
+  if (r >= fp_grid.r[grid.r.length - 1]) {
+    console.warn(`getFInterp: r=${r} above grid max ${fp_grid.r[grid.r.length - 1]}, clamping to last point`);
+    return fp_grid.f[grid.r.length - 1];
+  }
 
   var ri_lo = grid.r[lo], ri_hi = grid.r[lo + 1];
   var denom = ri_hi - ri_lo;
