@@ -142,7 +142,16 @@ function effPotPrimeBarotropicFiniteDiff(a, a0, s0, omega) {
 }
 /** Fast numerical first derivative for barotropic EOS — uses precomputed F' grid interpolation.
  * Used during RK4 integration for performance. Faster than Numerical variant but uses grid interpolation.
- * Uses globals M_val/A_val/r0_val set by initSim() via getFPrimeInterp. */
+ *
+ * ⚠️ Global state dependency: reads M_val, A_val, r0_val from the module-level global scope
+ * (set by initSim()). This function should only be called during active simulation when these
+ * globals are guaranteed to be current. For batch/offline use, pass parameters explicitly
+ * or ensure globals are synchronized before calling.
+ * @param {number} a - Current scale factor
+ * @param {number} a0 - Equilibrium scale factor
+ * @param {number} s0 - Surface tension at equilibrium
+ * @param {number} omega - EOS parameter
+ * @returns {number} First derivative of effective potential */
 function effPotPrimeBarotropicFast(a, a0, s0, omega) {
   const n_sigma = 2.0 * (1.0 + omega);
   // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ)

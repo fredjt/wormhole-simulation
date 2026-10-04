@@ -45,11 +45,13 @@ function hypergeom2F1(a, b, c, z) {
   // Piecewise iteration count scaled with |z|.
   var absZ = Math.abs(z);
   if (absZ <= 0.3) {
-    // Ensure minimum 100 iterations near boundary with next branch to avoid
-    // ~8× discontinuity at |z|=0.3 (65 vs 540 iterations).  Tolerance check
-    // (Math.abs(term) < tol * |result|) normally catches early convergence.
+    // Minimum 100 iterations ensures convergence near the |z|=0.3 branch boundary.
+    // The tolerance check (Math.abs(term) < tol * |result|) normally catches early
+    // convergence well before the max, so the floor mainly protects the boundary.
     return series(a, b, c, z, Math.max(Math.min(150 * absZ + 20, 80), 100), 1e-14);
   } else if (absZ <= 0.9) {
+    // Smooth formula: (3 - absZ) * 200 gives 420 at |z|=0.9 down to 420 at |z|=0.3.
+    // Math.ceil ensures integer iterations; the floor of 100 is a safety net.
     var iter = Math.max(Math.ceil((3 - absZ) * 200), 100);
     return series(a, b, c, z, iter, 1e-14);
   }
@@ -141,6 +143,9 @@ function initFPGrid(M, A, r0, N) {
         // grid construction — small h values can cause cancellation error with hypergeom.
         var hi2p = Math.max(rMin * 5e-7, dr / (N + 4));
         if (!isFinite(hi2p)) throw 'non-finite hi2p at index ' + i;
+        // NOTE: For points near rMin, ri - hi2p may fall below rMin. lapseF guards
+        // against r <= 0 by returning NaN, which triggers the try/catch abort. This
+        // means boundary derivatives may be less accurate than interior points.
         tmpFP[i] = (lapseF(ri + hi2p, M, A, r0) - lapseF(ri - hi2p, M, A, r0)) / (2.0 * hi2p);
 
         if (!isFinite(tmpFP[i])) throw new Error('NaN in dF/dr');
@@ -162,8 +167,8 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
   if (!_paramsMatch(M_val_in, A_val_in, r0_val_in)) initFPGrid(M_val_in, A_val_in, r0_val_in);
 
   var grid = fp_grid;
-  if (!grid || !isFinite(grid.r[0])) {
-    // Numerical differentiation fallback — grid not yet built or invalid
+  if (!grid || grid.r.length < 2 || !isFinite(grid.r[0])) {
+    // Numerical differentiation fallback — grid not yet built, invalid, or degenerate (< 2 points)
     var h = FD_FIRST_DERIV_H;
     return (lapseF(r + h, M_val_in, A_val_in, r0_val_in) - lapseF(r - h, M_val_in, A_val_in, r0_val_in)) / (2 * h);
   }
@@ -194,7 +199,7 @@ function getFInterp(r, M_val_in, A_val_in, r0_val_in) {
   if (!_paramsMatch(M_val_in, A_val_in, r0_val_in)) initFPGrid(M_val_in, A_val_in, r0_val_in);
 
   var grid = fp_grid;
-  if (!grid || !isFinite(grid.r[0])) return lapseF(r, M_val_in, A_val_in, r0_val_in); // fallback (grid not yet built)
+  if (!grid || grid.r.length < 2 || !isFinite(grid.r[0])) return lapseF(r, M_val_in, A_val_in, r0_val_in); // fallback (grid not yet built or degenerate)
 
   var lo = _binarySearch(0, grid.r.length - 1, grid.r, r);
 
