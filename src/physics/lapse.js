@@ -6,8 +6,14 @@
 var FD_FIRST_DERIV_H = 1e-7;
 var FD_SECOND_DERIV_H = 1e-5;
 
-// Parameter tolerance for grid rebuild check — relaxed from tighter values to tolerate
-// IEEE 754 float noise in UI slider (string→float) conversions.
+// Rate-limit for out-of-bounds warnings during integration (max 10 per second).
+var _warnCount = 0;
+var _warnLastTime = 0;
+
+// Parameter tolerance for grid rebuild check — chosen to be:
+//   - Tighter than UI slider quantization noise (prevents spurious rebuilds)
+//   - Looser than grid numerical precision floor (~hi2p ≈ 4e-5)
+//   - Tight enough to catch genuine parameter changes
 var PARAM_TOL = { M: 1e-7, A: 1e-6, r0: 1e-7 };
 
 function hypergeom2F1(a, b, c, z) {
@@ -138,11 +144,11 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
   var lo = _binarySearch(0, grid.r.length - 1, grid.r, r);
 
   if (r < fp_grid.r[lo]) {
-    console.warn(`getFPrimeInterp: r=${r} below grid min ${fp_grid.r[lo]}, clamping to first point`);
+    if (_shouldWarn()) console.warn(`getFPrimeInterp: r=${r} below grid min ${fp_grid.r[lo]}, clamping to first point`);
     return fp_grid.fp[lo];
   }
   if (r > fp_grid.r[grid.r.length - 1]) {
-    console.warn(`getFPrimeInterp: r=${r} above grid max ${fp_grid.r[grid.r.length - 1]}, clamping to last point`);
+    if (_shouldWarn()) console.warn(`getFPrimeInterp: r=${r} above grid max ${fp_grid.r[grid.r.length - 1]}, clamping to last point`);
     return fp_grid.fp[grid.r.length - 1];
   }
 
@@ -165,11 +171,11 @@ function getFInterp(r, M_val_in, A_val_in, r0_val_in) {
   var lo = _binarySearch(0, grid.r.length - 1, grid.r, r);
 
   if (r < fp_grid.r[lo]) {
-    console.warn(`getFInterp: r=${r} below grid min ${fp_grid.r[lo]}, clamping to first point`);
+    if (_shouldWarn()) console.warn(`getFInterp: r=${r} below grid min ${fp_grid.r[lo]}, clamping to first point`);
     return fp_grid.f[lo];
   }
   if (r > fp_grid.r[grid.r.length - 1]) {
-    console.warn(`getFInterp: r=${r} above grid max ${fp_grid.r[grid.r.length - 1]}, clamping to last point`);
+    if (_shouldWarn()) console.warn(`getFInterp: r=${r} above grid max ${fp_grid.r[grid.r.length - 1]}, clamping to last point`);
     return fp_grid.f[grid.r.length - 1];
   }
 
@@ -184,8 +190,17 @@ function getFInterp(r, M_val_in, A_val_in, r0_val_in) {
 /* ---- Internal helpers for binary-search interpolation ------------------------------------------ */
 /** Binary search: returns largest index lo such that arr[lo] <= r. */
 function _binarySearch(lo, hi, arr, r) {
-  while (hi - lo > 1) { var mid = ((lo + hi) >> 1); if (arr[mid] <= r) lo = mid; else hi = mid; }
+  while (hi - lo > 1) { var mid = ((lo + hi) >>> 1); if (arr[mid] <= r) lo = mid; else hi = mid; }
   return lo;
+}
+
+/** Rate-limit console warnings to max 10 per second to avoid main-thread blocking. */
+function _shouldWarn() {
+  var now = performance.now();
+  if (now - _warnLastTime > 100) { _warnCount = 0; _warnLastTime = now; }
+  if (_warnCount >= 10) return false;
+  _warnCount++;
+  return true;
 }
 
 function lapseFDblPrime(r, M, A, r0, h) { if (!h) h = FD_SECOND_DERIV_H; return (lapseF(r + h, M, A, r0) - 2 * lapseF(r, M, A, r0) + lapseF(r - h, M, A, r0)) / (h * h); }
