@@ -162,11 +162,14 @@ function _barotropicSigmaSq(a, a0, s0, omega) {
  * @param {number} [A] - String tension parameter (falls back to A_val if omitted)
  * @param {number} [r0] - Scale factor parameter (falls back to r0_val if omitted)
  * @returns {number} First derivative of effective potential */
+/** Resolve (M, A, r₀): explicit parameters override module-level globals. */
+function resolveParams(mIn, aIn, r0In) {
+  return { M: mIn ?? M_val, A: aIn ?? A_val, r0: r0In ?? r0_val };
+}
+
 function effPotPrimeBarotropicAccurate(a, a0, s0, omega, M_in, A_in, r0_in) {
-  const _M = M_in ?? M_val;
-  const _A = A_in ?? A_val;
-  const _r0 = r0_in ?? r0_val;
-  return lapseFPrime(a, _M, _A, _r0) +
+  var p = resolveParams(M_in, A_in, r0_in);
+  return lapseFPrime(a, p.M, p.A, p.r0) +
          2.0 * Math.PI * Math.PI * 2.0 * (1.0 + omega) * a * _barotropicSigmaSq(a, a0, s0, omega);
 }
 
@@ -189,10 +192,8 @@ function effPotPrimeBarotropicAccurate(a, a0, s0, omega, M_in, A_in, r0_in) {
  * @param {number} [r0] - Scale factor parameter (falls back to r0_val if omitted)
  * @returns {number} First derivative of effective potential */
 function effPotPrimeBarotropicFast(a, a0, s0, omega, M_in, A_in, r0_in) {
-  const _M = M_in ?? M_val;
-  const _A = A_in ?? A_val;
-  const _r0 = r0_in ?? r0_val;
-  return getFPrimeInterp(a, _M, _A, _r0) +
+  var p = resolveParams(M_in, A_in, r0_in);
+  return getFPrimeInterp(a, p.M, p.A, p.r0) +
          2.0 * Math.PI * Math.PI * 2.0 * (1.0 + omega) * a * _barotropicSigmaSq(a, a0, s0, omega);
 }
 // Export list:

@@ -13,21 +13,26 @@ var DEBUG_GRID_INTERP = typeof globalThis !== 'undefined' && globalThis.DEBUG_GR
 var _warnCount = 0;
 var _warnLastTime = 0;
 
+/** Timestamp of the last `_markClampingDetected()` call — used for time-based expiry. */
+var _clampingLastTime = 0;
+
 /** Reset rate-limit counters — call on simulation reset so warnings are visible across sessions.
- * Also resets the clamping detection flag so out-of-bounds warnings are visible in new sessions. */
+ * Also resets the clamping detection flag and its timestamp for new sessions. */
 function resetWarnCounters() {
   _warnCount = 0;
   _warnLastTime = 0;
   _clampingDetected = false;
+  _clampingLastTime = 0;
 }
 
 /** Clear the precomputed grid and parameter cache — used for testing and cleanup.
- * Also resets rate-limit counters and clamping detection flag. */
+ * Also resets rate-limit counters, clamping detection flag, and timestamp. */
 function destroyFPGrid() {
   fp_grid = null;
   last_fp_params = null;
   fp_grid_dirty = false;
   _clampingDetected = false;
+  _clampingLastTime = 0;
 }
 
 /** Mark the grid as needing rebuild — call when parameters change during sim.
@@ -308,23 +313,44 @@ function _shouldWarn() {
   return true;
 }
 
-/** Mark that out-of-bounds clamping has been detected in this session.
- * Called by interpolation functions when r falls outside grid bounds. */
+/** Mark that out-of-bounds clamping has been detected.
+ * Called by interpolation functions when r falls outside grid bounds.
+ *
+ * Uses a time-based expiry (CLAMPING_DETECTION_WINDOW ms) so the session-level
+ * warning can re-fire if out-of-bounds conditions persist or recur later in long runs. */
+var CLAMPING_DETECTION_WINDOW = 5000; // ms — reset clamping flag after this idle period
 function _markClampingDetected() {
-  if (!_clampingDetected) {
-    _clampingDetected = true;
-    // Log once per session regardless of rate-limit
-    if (typeof console !== 'undefined') {
-      console.warn('Grid interpolation: out-of-bounds clamping detected — ' +
-        'derivative values may be inaccurate for extreme scale factors.');
-    }
+  var now = performance.now();
+  // Reset the session-level flag if no recent clamping events (allows re-warning on long runs)
+  if (_clampingLastTime > 0 && now - _clampingLastTime < CLAMPING_DETECTION_WINDOW) return;
+
+  _clampingDetected = true;
+  _clampingLastTime = now;
+  // Log once per session regardless of rate-limit
+  if (typeof console !== 'undefined') {
+    console.warn('Grid interpolation: out-of-bounds clamping detected — ' +
+      'derivative values may be inaccurate for extreme scale factors.');
   }
 }
 
-/** Numerical second derivative of lapseF using central difference. */
-function lapseFDblPrime(r, M, A, r0, h) { if (!h) h = FD_SECOND_DERIV_H; return (lapseF(r + h, M, A, r0) - 2 * lapseF(r, M, A, r0) + lapseF(r - h, M, A, r0)) / (h * h); }
+/** Numerical second derivative of lapseF using central difference.
+ * Mirrors `lapseF` input validation — returns NaN if parameters are invalid. */
+function lapseFDblPrime(r, M, A, r0, h) {
+  // Consistent with lapseF: reject non-finite params or r <= 0 early (avoids silent NaN propagation).
+  if (!isFinite(M) || !isFinite(A) || !isFinite(r0)) return NaN;
+  if (!h) h = FD_SECOND_DERIV_H;
+  var _r = Math.max(1e-3, r);
+  return (lapseF(_r + h, M, A, r0) - 2 * lapseF(_r, M, A, r0) + lapseF(_r - h, M, A, r0)) / (h * h);
+}
 
-/** Numerical first derivative of lapseF using central difference. */
-function lapseFPrime(r, M, A, r0, h) { if (h === undefined || !isFinite(h)) h = FD_FIRST_DERIV_H; return (lapseF(r + h, M, A, r0) - lapseF(r - h, M, A, r0)) / (2 * h); }
+/** Numerical first derivative of lapseF using central difference.
+ * Mirrors `lapseF` input validation — returns NaN if parameters are invalid. */
+function lapseFPrime(r, M, A, r0, h) {
+  // Consistent with lapseF: reject non-finite params or r <= 0 early (avoids silent NaN propagation).
+  if (!isFinite(M) || !isFinite(A) || !isFinite(r0)) return NaN;
+  if (h === undefined || !isFinite(h)) h = FD_FIRST_DERIV_H;
+  var _r = Math.max(1e-3, r);
+  return (lapseF(_r + h, M, A, r0) - lapseF(_r - h, M, A, r0)) / (2 * h);
+}
 
 export { lapseF, lapseFPrime, lapseFDblPrime, initFPGrid, getFPrimeInterp, resetWarnCounters, destroyFPGrid, setFPGridDirty };

@@ -4,8 +4,18 @@ let lastTime = 0;
 
 function rk4Step(dt) {
   if(!calibrated)return;
-  const f_a0=lapseF(a0_val,M_val,A_val,r0_val);
-  if(!isFinite(f_a0)||f_a0<=0)return;
+
+  const _a = a0_val, Mv = M_val, Av = A_val, r0v = r0_val;
+  const f_a0=lapseF(_a,Mv,Av,r0v);
+
+  // Stop sim on invalid lapse — log params so user can debug edge cases.
+  if(!isFinite(f_a0)||f_a0<=0){
+    console.warn('rk4Step: lapseF(a₀='+_a+')=' + f_a0 + ' (M='+Mv+', A='+Av+
+      ', r₀='+r0v+') — stopping sim');
+    simRunning = false;
+    return;
+  }
+
   // Pre-compute sigma₀ once — exact analytical value from EOS at equilibrium.
   const _sigma0=-Math.sqrt(f_a0)/(2*Math.PI*a0_val);
 

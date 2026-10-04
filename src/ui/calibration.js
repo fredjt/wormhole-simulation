@@ -86,8 +86,11 @@ function updateEosParamsUI(){
         // Update slider FIRST so readParams captures current values from DOM
         slider.value = numInput.value;
         scheduleReadParams();
-        // Mark grid dirty if simulation is running — next getFPrimeInterp call will rebuild
-        if (simRunning) setFPGridDirty();
+        // When simulation is running, reset fully instead of just marking grid dirty.
+        // This ensures all parameters are applied atomically — avoiding a race where two
+        // rapid number-input changes could cause the next grid rebuild to use stale globals
+        // (e.g., new ω but old A). Sliders already do this via `resetSim()`.  See PR #10.
+        if (simRunning) resetSim();
       }
     };
 
