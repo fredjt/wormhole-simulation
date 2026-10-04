@@ -5,7 +5,7 @@ let lastTime = 0;
 function rk4Step(dt) {
   if(!calibrated)return;
   const f_a0=lapseF(a0_val,M_val,A_val,r0_val);
-  if(f_a0<=0)return;
+  if(!isFinite(f_a0)||f_a0<=0)return;
   // Pre-compute sigma₀ once — exact analytical value from EOS at equilibrium.
   const _sigma0=-Math.sqrt(f_a0)/(2*Math.PI*a0_val);
 

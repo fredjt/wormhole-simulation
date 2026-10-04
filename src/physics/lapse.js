@@ -1,8 +1,9 @@
 // Regularized Letelier-Alencar string-cloud black hole lapse function  
 // Paper: arXiv:2610.00131, Eq. 2.1-2.2
 
-// Numerical differentiation step sizes — used by lapseFPrime, lapseFDblPrime, and
-// inline FD in potential.js. Must match across files for consistent calibration.
+// Numerical differentiation step sizes for lapseF derivatives used by calibration
+// functions and grid construction. Note: effPotPrime in potential.js uses its own
+// h=1e-6 since it operates on a composite function V(a).
 var FD_FIRST_DERIV_H = 1e-7;
 var FD_SECOND_DERIV_H = 1e-5;
 
@@ -99,13 +100,16 @@ function _paramsMatch(M_in, A_in, r0_val_in) {
 }
 
 /** Build a dense (N=256) grid of (r, F(r), dF/dr) for given M,A,r0. */ 
+/** Build a dense (r, F(r), dF/dr) lookup grid for fast barotropic derivative interpolation.
+ * @param {number} [N=256] Grid resolution (points). Higher = more accurate but slower construction.
+ *   Typical values: 128-512. Accuracy scales approximately as O(1/N²) for linear interpolation. */
 function initFPGrid(M, A, r0, N) {
   // Default grid size: 256 points (~19 KB Float64Array per grid).
   // Trade-off: more points = better interpolation accuracy but slower construction.
   // For typical wormhole parameters, 256 points gives <1e-4 interpolation error.
   if (!N || !isFinite(N)) N = 256;
 
-    var rMin = Math.max(0.1 * M || 0.05, 0.01);
+    var rMin = Math.max(0.1 * M, 0.01); // Floor at 0.01 prevents unphysically small grid for low mass.
   if (!isFinite(rMin)) { console.warn('initFPGrid: non-finite rMin'); return false; }
   // Grid bounds: scale rMax with mass to cover expected oscillation ranges.
   // For large M, horizons and stable throats are farther out, so we need
