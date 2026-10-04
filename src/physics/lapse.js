@@ -10,6 +10,12 @@ var FD_SECOND_DERIV_H = 1e-5;
 var _warnCount = 0;
 var _warnLastTime = 0;
 
+/** Reset rate-limit counters — call on simulation reset so warnings are visible across sessions. */
+function resetWarnCounters() {
+  _warnCount = 0;
+  _warnLastTime = 0;
+}
+
 // Parameter tolerance for grid rebuild check — chosen to be:
 //   - Tighter than UI slider quantization noise (prevents spurious rebuilds)
 //   - Looser than grid numerical precision floor (~hi2p ≈ 4e-5)
@@ -117,6 +123,10 @@ function initFPGrid(M, A, r0, N) {
 
       if (!isFinite(tmpF[i])) throw new Error('NaN in F');  // Abort grid construction on bad value.
 
+      // Grid derivative step size: adaptive based on local grid spacing.
+      // Differs from FD_FIRST_DERIV_H (1e-7) used in lapseFPrime() for calibration.
+      // Grid uses a larger step (typically ~dr/260) for numerical stability during
+      // grid construction — small h values can cause cancellation error with hypergeom.
       var hi2p = Math.max(rMin * 5e-7, dr / (N + 4));
       if (!isFinite(hi2p)) throw 'non-finite hi2p at index ' + i;
       tmpFP[i] = (lapseF(ri + hi2p, M, A, r0) - lapseF(ri - hi2p, M, A, r0)) / (2.0 * hi2p);
@@ -214,4 +224,4 @@ function lapseFDblPrime(r, M, A, r0, h) { if (!h) h = FD_SECOND_DERIV_H; return 
 /** Numerical first derivative of lapseF using central difference. */
 function lapseFPrime(r, M, A, r0, h) { if (!h) h = FD_FIRST_DERIV_H; return (lapseF(r + h, M, A, r0) - lapseF(r - h, M, A, r0)) / (2 * h); }
 
-export { lapseF, lapseFPrime, lapseFDblPrime, initFPGrid, getFPrimeInterp };
+export { lapseF, lapseFPrime, lapseFDblPrime, initFPGrid, getFPrimeInterp, resetWarnCounters };

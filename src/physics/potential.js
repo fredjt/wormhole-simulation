@@ -140,9 +140,6 @@ function effPotPrimeBarotropicNumerical(a, a0, s0, omega) {
   return lapseFPrime(a, M_val, A_val, r0_val) +  
          2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;  
 }
-/** Fast numerical first derivative for barotropic EOS — uses pre-computed F' grid (zero hypergeom calls).
- * Uses global state set by initSim() via getFPrimeInterp(a, M_val_in, A_val_in, r0_val_in).  
- */  
 /** Fast numerical first derivative for barotropic EOS — uses precomputed F' grid interpolation.
  * Used during RK4 integration for performance. Faster than Numerical variant but uses grid interpolation.
  * Uses globals M_val/A_val/r0_val set by initSim() via getFPrimeInterp. */
