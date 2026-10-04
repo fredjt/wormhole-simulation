@@ -142,7 +142,7 @@ function calibrateModCosmicChap(a0, M, A, r0) {
  * dispatches through computeSigmaFromEOS.
  *
  * Uses globals M_val/A_val/r0_val set by initSim() — same convention as calibrateOmega(), barotropicVpp(). */
-function effPotPrimeBarotropicFiniteDiff(a, a0, s0, omega) {
+function effPotPrimeBarotropicNumerical(a, a0, s0, omega) {
   const n_sigma = 2.0 * (1.0 + omega);
   // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ)
   const sigma_sq_scaled = (s0 * s0) * Math.pow(a / a0, -n_sigma);
@@ -176,4 +176,4 @@ export { computeVpp, computeVppOptimized,
          calibratePhantomParams, phantomVpp,
          calibrateChaplyginParams,
          calibrateCosmicChap, calibrateModCosmicChap,
-         effPotPrimeBarotropicFast, effPotPrimeBarotropicFiniteDiff };
+         effPotPrimeBarotropicFast, effPotPrimeBarotropicNumerical };

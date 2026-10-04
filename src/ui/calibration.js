@@ -86,6 +86,8 @@ function updateEosParamsUI(){
         // Update slider FIRST so readParams captures current values from DOM
         slider.value = numInput.value;
         scheduleReadParams();
+        // Mark grid dirty if simulation is running — next getFPrimeInterp call will rebuild
+        if (simRunning) setFPGridDirty();
       }
     };
 

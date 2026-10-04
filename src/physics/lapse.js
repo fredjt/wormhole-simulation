@@ -11,17 +11,21 @@ var FD_SECOND_DERIV_H = 1e-5;
 var _warnCount = 0;
 var _warnLastTime = 0;
 
-/** Reset rate-limit counters — call on simulation reset so warnings are visible across sessions. */
+/** Reset rate-limit counters — call on simulation reset so warnings are visible across sessions.
+ * Also resets the clamping detection flag so out-of-bounds warnings are visible in new sessions. */
 function resetWarnCounters() {
   _warnCount = 0;
   _warnLastTime = 0;
+  _clampingDetected = false;
 }
 
-/** Clear the precomputed grid and parameter cache — used for testing and cleanup. */
+/** Clear the precomputed grid and parameter cache — used for testing and cleanup.
+ * Also resets rate-limit counters and clamping detection flag. */
 function destroyFPGrid() {
   fp_grid = null;
   last_fp_params = null;
   fp_grid_dirty = false;
+  _clampingDetected = false;
 }
 
 /** Mark the grid as needing rebuild — call from UI when parameters change during sim.
@@ -31,13 +35,10 @@ function setFPGridDirty() {
   fp_grid_dirty = true;
 }
 
-// Parameter tolerance for grid rebuild check — chosen to be:
-//   - Tighter than UI slider quantization noise (0.01 step on all sliders)
-//   - Looser than grid numerical precision floor (~hi2p ≈ 4e-5)
-//   - Tight enough to catch genuine parameter changes
-//   - A uses 1e-6 (10× looser than M/r0) because the string cloud parameter
-//     A has a smaller dynamic range [0,1] vs M [0.3,5], so relative changes
-//     in A are more significant for the same absolute delta.
+// Parameter tolerance for grid rebuild check — chosen empirically to sit
+// between UI slider quantization noise (~0.01 step) and grid numerical
+// precision floor (~hi2p ≈ 4e-5). Values prevent spurious rebuilds from
+// floating-point noise while catching genuine parameter changes.
 var PARAM_TOL = { M: 1e-7, A: 1e-6, r0: 1e-7 };
 
 function hypergeom2F1(a, b, c, z) {
@@ -200,11 +201,11 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
   var lo = _binarySearch(0, grid.r.length - 1, grid.r, r);
 
   if (r < fp_grid.r[lo]) {
-    if (_shouldWarn()) console.warn(`getFPrimeInterp: r=${r} below grid min ${fp_grid.r[lo]}, clamping to first point`);
+    if (_shouldWarn()) console.warn(`getFPrimeInterp: r=${r} below grid min ${fp_grid.r[lo]}, clamping to first point`); _markClampingDetected();
     return fp_grid.fp[lo];
   }
   if (r > fp_grid.r[grid.r.length - 1]) {
-    if (_shouldWarn()) console.warn(`getFPrimeInterp: r=${r} above grid max ${fp_grid.r[grid.r.length - 1]}, clamping to last point`);
+    if (_shouldWarn()) console.warn(`getFPrimeInterp: r=${r} above grid max ${fp_grid.r[grid.r.length - 1]}, clamping to last point`); _markClampingDetected();
     return fp_grid.fp[grid.r.length - 1];
   }
 
@@ -231,11 +232,11 @@ function getFInterp(r, M_val_in, A_val_in, r0_val_in) {
   var lo = _binarySearch(0, grid.r.length - 1, grid.r, r);
 
   if (r < fp_grid.r[lo]) {
-    if (_shouldWarn()) console.warn(`getFInterp: r=${r} below grid min ${fp_grid.r[lo]}, clamping to first point`);
+    if (_shouldWarn()) console.warn(`getFInterp: r=${r} below grid min ${fp_grid.r[lo]}, clamping to first point`); _markClampingDetected();
     return fp_grid.f[lo];
   }
   if (r > fp_grid.r[grid.r.length - 1]) {
-    if (_shouldWarn()) console.warn(`getFInterp: r=${r} above grid max ${fp_grid.r[grid.r.length - 1]}, clamping to last point`);
+    if (_shouldWarn()) console.warn(`getFInterp: r=${r} above grid max ${fp_grid.r[grid.r.length - 1]}, clamping to last point`); _markClampingDetected();
     return fp_grid.f[grid.r.length - 1];
   }
 
@@ -254,13 +255,31 @@ function _binarySearch(lo, hi, arr, r) {
   return lo;
 }
 
-/** Rate-limit console warnings to max 10 per second to avoid main-thread blocking. */
+/** Rate-limit console warnings to max 10 per second to avoid main-thread blocking.
+ * Also tracks session-level clamping detection: once clamping occurs in a session,
+ * _clampingDetected stays true until resetWarnCounters() or destroyFPGrid() is called.
+ * This ensures users are notified at least once per session even when rate-limited. */
+var _clampingDetected = false;
+
 function _shouldWarn() {
   var now = performance.now();
   if (now - _warnLastTime > 100) { _warnCount = 0; _warnLastTime = now; }
   if (_warnCount >= 10) return false;
   _warnCount++;
   return true;
+}
+
+/** Mark that out-of-bounds clamping has been detected in this session.
+ * Called by interpolation functions when r falls outside grid bounds. */
+function _markClampingDetected() {
+  if (!_clampingDetected) {
+    _clampingDetected = true;
+    // Log once per session regardless of rate-limit
+    if (typeof console !== 'undefined') {
+      console.warn('Grid interpolation: out-of-bounds clamping detected — ' +
+        'derivative values may be inaccurate for extreme scale factors.');
+    }
+  }
 }
 
 /** Numerical second derivative of lapseF using central difference. */
