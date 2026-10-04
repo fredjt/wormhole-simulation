@@ -134,10 +134,12 @@ function calibrateModCosmicChap(a0, M, A, r0) {
 /** Numerical first derivative for barotropic EOS — uses central-difference FD via lapseFPrime.
  * Used for calibration and stability analysis. Slower than the Fast variant but more accurate.
  *
+ * V'(a) = F'(a) + 4π²·n_σ · a · σ₀²(a/a₀)^{-n_σ}  where n_σ = 2(1+ω)
+ *
  * ⚠️ Barotropic-only: This function implements the analytical shortcut derived specifically
- * for the barotropic EOS model (σ ∝ a^(-n_σ) where n_σ = 2(1+ω)). It should NOT be called
- * with phantom, chaplygin, or other EOS models — those require the general effPot()/effPotPrime()
- * path which correctly dispatches through computeSigmaFromEOS.
+ * for the barotropic EOS model. It should NOT be called with phantom, chaplygin, or other
+ * EOS models — those require the general effPot()/effPotPrime() path which correctly
+ * dispatches through computeSigmaFromEOS.
  *
  * Uses globals M_val/A_val/r0_val set by initSim() — same convention as calibrateOmega(), barotropicVpp(). */
 function effPotPrimeBarotropicFiniteDiff(a, a0, s0, omega) {

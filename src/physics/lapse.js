@@ -21,6 +21,14 @@ function resetWarnCounters() {
 function destroyFPGrid() {
   fp_grid = null;
   last_fp_params = null;
+  fp_grid_dirty = false;
+}
+
+/** Mark the grid as needing rebuild — call from UI when parameters change during sim.
+ * This prevents the next getFPrimeInterp call from using stale grid data.
+ * The actual rebuild happens synchronously on the next interpolation call. */
+function setFPGridDirty() {
+  fp_grid_dirty = true;
 }
 
 // Parameter tolerance for grid rebuild check — chosen to be:
@@ -92,9 +100,14 @@ function lapseF(r, M, A, r0) {
 // Pre-computed F(r), dF/dr grid for fast interpolation during simulation.
 var fp_grid = null;   // {r: Float64Array, f: Float64Array, fp: Float64Array}
 var last_fp_params = null;  // Last (M,A,r0) used to build the current grid
+var fp_grid_dirty = false;  // Flag: grid needs rebuild (params changed during sim)
 
-/** Rebuild params check — deduplicated helper. */
+/** Rebuild params check — deduplicated helper.
+ * Returns true if the current grid matches the given parameters within tolerance.
+ * Also considers the dirty flag: if fp_grid_dirty is true, we force a rebuild
+ * even if _paramsMatch would pass (prevents stale grid after mid-sim parameter change). */
 function _paramsMatch(M_in, A_in, r0_val_in) {
+  if (fp_grid_dirty) return false;  // Force rebuild if marked dirty
   var gp = last_fp_params;
   // Tolerances relaxed to prevent unnecessary rebuilds on UI slider interactions.
   if (!gp || Math.abs(gp.M - M_in) > PARAM_TOL.M
@@ -118,6 +131,8 @@ function initFPGrid(M, A, r0, N) {
   // Grid bounds: scale rMax with mass to cover expected oscillation ranges.
   // For large M, horizons and stable throats are farther out, so we need
   // a wider grid. The 8*M term ensures coverage up to ~8× mass scale.
+  // For unstable barotropic trajectories that expand rapidly, rMax may be
+  // exceeded — the clamping path returns the boundary F' value.
   var rMax = Math.max(rMin + 8 * M, rMin * (M > 3 ? 4 : 3));
   if (!isFinite(rMax) || rMax <= rMin) { console.warn('initFPGrid: invalid grid bounds'); return false; }
 
@@ -165,7 +180,13 @@ function initFPGrid(M, A, r0, N) {
 }
 
 /** Evaluate pre-computed F'(r) via linear interpolation on the grid.
- * Requires: M_val, A_val, r0_val to be set (by initSim) before calling. */
+ * Requires: M_val, A_val, r0_val to be set (by initSim) before calling.
+ *
+ * Grid rebuild strategy: if params changed during simulation (fp_grid_dirty),
+ * the grid is rebuilt synchronously on the first call after the change. To avoid
+ * blocking the animation frame, callers should mark the grid dirty via
+ * setFPGridDirty() when UI parameters change, then the next getFPrimeInterp
+ * call will rebuild before returning. */
 function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
   if (!_paramsMatch(M_val_in, A_val_in, r0_val_in)) initFPGrid(M_val_in, A_val_in, r0_val_in);
 
@@ -197,7 +218,10 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
 }
 
 /** Evaluate pre-computed F(r) via linear interpolation on the grid.
- * Requires: M_val, A_val, r0_val to be set (by initSim) before calling. */
+ * Requires: M_val, A_val, r0_val to be set (by initSim) before calling.
+ * @deprecated Not used during simulation — the grid stores F' for V' computation
+ * via getFPrimeInterp. F values are read directly from lapseF() when needed
+ * (e.g., for computing sigma₀). Kept for potential future use. */
 function getFInterp(r, M_val_in, A_val_in, r0_val_in) {
   if (!_paramsMatch(M_val_in, A_val_in, r0_val_in)) initFPGrid(M_val_in, A_val_in, r0_val_in);
 
@@ -245,4 +269,4 @@ function lapseFDblPrime(r, M, A, r0, h) { if (!h) h = FD_SECOND_DERIV_H; return 
 /** Numerical first derivative of lapseF using central difference. */
 function lapseFPrime(r, M, A, r0, h) { if (!h) h = FD_FIRST_DERIV_H; return (lapseF(r + h, M, A, r0) - lapseF(r - h, M, A, r0)) / (2 * h); }
 
-export { lapseF, lapseFPrime, lapseFDblPrime, initFPGrid, getFPrimeInterp, resetWarnCounters, destroyFPGrid };
+export { lapseF, lapseFPrime, lapseFDblPrime, initFPGrid, getFPrimeInterp, resetWarnCounters, destroyFPGrid, setFPGridDirty };
