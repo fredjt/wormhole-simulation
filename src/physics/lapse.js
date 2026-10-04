@@ -10,8 +10,20 @@ var FD_SECOND_DERIV_H = 1e-5;
 // Rate-limit for out-of-bounds warnings during integration (max 10 per second).
 // Set DEBUG_GRID_INTERP=true to disable rate limiting for diagnostic purposes.
 var DEBUG_GRID_INTERP = typeof globalThis !== 'undefined' && globalThis.DEBUG_GRID_INTERP;
+// Rate-limit counters and time tracking for out-of-bounds warnings (max ~40 per second).
+// Set DEBUG_GRID_INTERP=true to disable rate limiting for diagnostic purposes.
 var _warnCount = 0;
 var _warnLastTime = 0;
+var WARN_WINDOW_MS = 250; // ms — window length before counter resets
+var MAX_WARNINGS_PER_WINDOW = 10;
+function _shouldWarn() {
+  if (DEBUG_GRID_INTERP) return true;  // No rate limiting in debug mode
+  var now = performance.now();
+  if (now - _warnLastTime > WARN_WINDOW_MS) { _warnCount = 0; _warnLastTime = now; }
+  if (_warnCount >= MAX_WARNINGS_PER_WINDOW) return false;
+  _warnCount++;
+  return true;
+}
 
 /** Timestamp of the last `_markClampingDetected()` call — used for time-based expiry. */
 var _clampingLastTime = 0;
@@ -89,6 +101,18 @@ function hypergeom2F1(a, b, c, z) {
   }
 
   // Analytic continuation for |z| > 0.9: factor*(1-z)^(-b) identity.
+  var absZ = Math.abs(z);
+
+  // Guard against extremely large |z| where even analytic continuation becomes unreliable.
+  // For our use case (hypergeom2F1(-0.5,-0.25,0.75,z)), z is always real and negative,
+  // so very large |z| means r/r₀ >> 1 — the hypergeometric series fundamentally diverges
+  // at or near its singularity regardless of iteration count.
+  if (absZ > 1e6) {
+    console.warn('hypergeom2F1: extremely large |z|=' + absZ.toFixed(4) +
+      ' — falling back to asymptotic term only');
+    return Math.pow(1 - z, -b); // Asymptotic leading order
+  }
+
   var factor = Math.pow(1 - z, -b);
   var zNew = z / (z - 1);
   if (Math.abs(zNew) < 0.95) {
@@ -100,7 +124,16 @@ function hypergeom2F1(a, b, c, z) {
   return factor * series(c - a, b, c, zNew, iter, 1e-14);
 }
 
+/** Regularized Letelier-Alencar string-cloud black hole lapse function.
+ * F(r) = [1 - (2M/r - A·r₀²/r² · ₂F₁(-½,-¼;¾;-r⁴/r₀⁴))](1 + r₀/r)⁻⁴
+ *
+ * @param {number} r — radius (>0 required)
+ * @returns {number} Lapse function value, or NaN if inputs are invalid.
+ */
 function lapseF(r, M, A, r0) {
+    // NOTE: Returns NaN for r ≤ 0 (previously returned 1.0 as a sentinel).
+    // This behavioral change prevents callers from relying on F(≤0)=1 which is
+    // unphysical; any caller that needs an asymptotic limit should check explicitly.
     if (r <= 0 || !isFinite(M) || !isFinite(A) || !isFinite(r0)) return NaN;
   var ratio = r / r0;
   // Compute -r^4/r_0^4 correctly as -(x² * x²).
@@ -265,13 +298,30 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
   var lo = _binarySearch(0, grid.r.length - 1, grid.r, r);
   var hi = grid.r.length - 1;
 
+  // Out-of-bounds handling with first-order extrapolation instead of flat-clamp.
   if (r < grid.r[lo]) {
-    if (_shouldWarn()) console.warn(`getFPrimeInterp: r=${r} below grid min ${grid.r[lo]}, clamping to first point`); _markClampingDetected();
-    return grid.fp[lo];
+    var loFp = grid.fp[lo], hiFp = grid.fp[Math.min(lo + 1, grid.fp.length - 1)];
+    var dr_local = Math.max(grid.r[Math.min(lo + 1, grid.r.length - 1)] - grid.r[lo], 1e-30);
+    var slope = (hiFp - loFp) / dr_local;
+    if (_shouldWarn()) {
+      console.warn('getFPrimeInterp: r=' + r.toFixed(4) + ' below grid min '
+        + grid.r[lo].toFixed(4) + ', extrapolating');
+    }
+    _markClampingDetected();
+    return loFp + slope * (r - grid.r[lo]);
   }
+
   if (r > grid.r[hi]) {
-    if (_shouldWarn()) console.warn(`getFPrimeInterp: r=${r} above grid max ${grid.r[hi]}, clamping to last point`); _markClampingDetected();
-    return grid.fp[hi];
+    var hiIdx = Math.min(hi, grid.fp.length - 1);
+    var prevHiFp = grid.fp[Math.max(hiIdx - 1, 0)];
+    dr_local = Math.max(grid.r[hi] - grid.r[Math.max(hiIdx - 1, 0)], 1e-30);
+    slope = (grid.fp[hiIdx] - prevHiFp) / dr_local;
+    if (_shouldWarn()) {
+      console.warn('getFPrimeInterp: r=' + r.toFixed(4) + ' above grid max '
+        + grid.r[hi].toFixed(4) + ', extrapolating');
+    }
+    _markClampingDetected();
+    return grid.fp[hiIdx] + slope * (r - grid.r[hi]);
   }
 
   var ri_lo = grid.r[lo], ri_hi = grid.r[lo + 1];
@@ -302,16 +352,8 @@ function _binarySearch(lo, hi, arr, r) {
  * Also tracks session-level clamping detection: once clamping occurs in a session,
  * _clampingDetected stays true until resetWarnCounters() or destroyFPGrid() is called.
  * This ensures users are notified at least once per session even when rate-limited. */
+// Session-level flag for tracking whether any out-of-bounds clamping has occurred.
 var _clampingDetected = false;
-
-function _shouldWarn() {
-  if (DEBUG_GRID_INTERP) return true;  // No rate limiting in debug mode
-  var now = performance.now();
-  if (now - _warnLastTime > 100) { _warnCount = 0; _warnLastTime = now; }
-  if (_warnCount >= 10) return false;
-  _warnCount++;
-  return true;
-}
 
 /** Mark that out-of-bounds clamping has been detected.
  * Called by interpolation functions when r falls outside grid bounds.
@@ -335,11 +377,17 @@ function _markClampingDetected() {
 
 /** Numerical second derivative of lapseF using central difference.
  * Mirrors `lapseF` input validation — returns NaN if parameters are invalid. */
+/** Numerical second derivative of lapseF using central difference.
+ * Mirrors `lapseF` input validation — returns NaN if parameters are invalid.
+ *
+ * @param {number} r - radius; values < 0.001 will be clamped to 0.001 for numerical safety
+ *   (the hypergeometric series is unstable near z→-∞ which corresponds to very small r).
+ */
 function lapseFDblPrime(r, M, A, r0, h) {
-  // Consistent with lapseF: reject non-finite params or r <= 0 early (avoids silent NaN propagation).
+  // Consistent with lapseF: reject non-finite params early.
   if (!isFinite(M) || !isFinite(A) || !isFinite(r0)) return NaN;
   if (!h) h = FD_SECOND_DERIV_H;
-  var _r = Math.max(1e-3, r);
+  var _r = Math.max(1e-3, r); // Clamp to avoid numerical instability at very small radii
   return (lapseF(_r + h, M, A, r0) - 2 * lapseF(_r, M, A, r0) + lapseF(_r - h, M, A, r0)) / (h * h);
 }
 

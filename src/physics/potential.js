@@ -131,6 +131,12 @@ function calibrateModCosmicChap(a0, M, A, r0) {
   }
   return bestAmcc;
 }
+
+/** Resolve (M, A, r₀): explicit parameters override module-level globals. */
+function resolveParams(mIn, aIn, r0In) {
+  return { M: mIn ?? M_val, A: aIn ?? A_val, r0: r0In ?? r0_val };
+}
+
 /** Compute σ²(a) = σ₀² · (a/a₀)^(-n_σ) for barotropic EOS where n_σ = 2(1+ω).
  * Shared helper to avoid duplication between the Fast and Accurate variants. */
 function _barotropicSigmaSq(a, a0, s0, omega) {
@@ -162,11 +168,6 @@ function _barotropicSigmaSq(a, a0, s0, omega) {
  * @param {number} [A] - String tension parameter (falls back to A_val if omitted)
  * @param {number} [r0] - Scale factor parameter (falls back to r0_val if omitted)
  * @returns {number} First derivative of effective potential */
-/** Resolve (M, A, r₀): explicit parameters override module-level globals. */
-function resolveParams(mIn, aIn, r0In) {
-  return { M: mIn ?? M_val, A: aIn ?? A_val, r0: r0In ?? r0_val };
-}
-
 function effPotPrimeBarotropicAccurate(a, a0, s0, omega, M_in, A_in, r0_in) {
   var p = resolveParams(M_in, A_in, r0_in);
   return lapseFPrime(a, p.M, p.A, p.r0) +
@@ -196,6 +197,7 @@ function effPotPrimeBarotropicFast(a, a0, s0, omega, M_in, A_in, r0_in) {
   return getFPrimeInterp(a, p.M, p.A, p.r0) +
          2.0 * Math.PI * Math.PI * 2.0 * (1.0 + omega) * a * _barotropicSigmaSq(a, a0, s0, omega);
 }
+
 // Export list:
 // barotropicVpp and phantomVpp remain exported for analytical reference and test coverage.
 export { computeVpp, computeVppOptimized,
