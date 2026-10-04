@@ -1,3 +1,5 @@
+// Import getFPrimeInterp from lapse module
+import { getFPrimeInterp } from './lapse.js';
 // Unified Vpp computation — single source of truth for stability determination.
 // Uses numerical second derivative of the effective potential via central differences,
 // which correctly accounts for how sigma changes when 'a' is perturbed (including
@@ -129,7 +131,40 @@ function calibrateModCosmicChap(a0, M, A, r0) {
   return bestAmcc;
 }
 
-// Export list: core functions first (computeVpp + V(a) helpers), then calibration.
+/** Analytical first derivative of effective potential for barotropic EOS. */
+/**
+/** Analytical first derivative of effective potential for barotropic EOS.
+ * For σ(a) = σ₀·(a/a₀)^(-2(1+ω)), V'(a) = F'(a) + 2π²σ²(a)(4+n_σ). 
+ * Uses numerical F'(a) from lapse module — suitable for calibration/stability analysis where accuracy matters.
+ * NOTE: This uses finite-difference F' (not exact analytical derivative of hypergeometric function).  
+ */
+function effPotPrimeBarotropic(a, a0, s0, omega, M_val_in, A_val_in, r0_val_in) {  // #1 fix — explicit params like other physics functions. Falls back to globals if not provided for backward compat during simulation loop.
+  const n_sigma = 2.0 * (1.0 + omega);
+  const _M = M_val_in ?? M_val;   // Explicit param or global fallback  
+  const _A = A_val_in ?? A_val;
+  const _r0 = r0_val_in ?? r0_val;
+  // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ)  
+  const sigma_sq_scaled = (s0 * s0) * Math.pow(a / a0, -n_sigma);
+  return lapseFPrime(a, _M, _A, _r0) + 
+         2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;  
+}
+
+/** Fast analytical first derivative for barotropic EOS — uses pre-computed F' grid (zero hypergeom calls).
+ * Accepts explicit M,A,r₀ params to match physics function convention (#1 fix), with global fallback 
+ * during simulation loop where initSim() has already set up the grid. This avoids dead-code globals at call site.  
+ */  
+function effPotPrimeBarotropicFast(a, a0, s0, omega, M_val_in, A_val_in, r0_val_in) {  // #1 fix — explicit params like other physics functions. Falls back to globals if not provided for backward compat during simulation loop.
+  const n_sigma = 2.0 * (1.0 + omega);  
+  const _M = M_val_in ?? M_val;   // Explicit param or global fallback 
+  const _A = A_val_in ?? A_val;
+  const _r0 = r0_val_in ?? r0_val;
+  // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ) 
+  const sigma_sq_scaled = (s0 * s0) * Math.pow(a / a0, -n_sigma);
+  return getFPrimeInterp(a, _M, _A, _r0) +  
+         2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;  
+}
+
+// Export list:
 // barotropicVpp and phantomVpp remain exported for analytical reference and test coverage.
 export { computeVpp, computeVppOptimized,
          effPot, effPotPrime, effPotD2,
