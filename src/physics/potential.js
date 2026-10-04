@@ -149,6 +149,11 @@ function effPotPrimeBarotropicFast(a, a0, s0, omega) {
          2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;
 }
 
+/*
+/** Analytical first derivative of effective potential for barotropic EOS.  
+ * Uses numerical F'(a) from lapse module — suitable for calibration/stability analysis where accuracy matters (#5).
+ */
+
 // Export list: core functions first (computeVpp + V(a) helpers), then calibration.
 // barotropicVpp and phantomVpp remain exported for analytical reference and test coverage.
 export { computeVpp, computeVppOptimized,
