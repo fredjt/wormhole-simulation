@@ -1,5 +1,5 @@
 // Import getFPrimeInterp from lapse module
-import { getFPrimeInterp } from './lapse.js';
+import { getFPrimeInterp, lapseFPrime } from './lapse.js';
 // Unified Vpp computation — single source of truth for stability determination.
 // Uses numerical second derivative of the effective potential via central differences,
 // which correctly accounts for how sigma changes when 'a' is perturbed (including
@@ -45,8 +45,7 @@ function effPotD2(a, a0, s0, model, params) {
 function calibrateOmega(a0, M, A, r0) {
   const f = lapseF(a0, M, A, r0);
   if (f <= 0) return NaN;
-  const h = 1e-7;
-  const fp = (lapseF(a0 + h, M, A, r0) - lapseF(a0 - h, M, A, r0)) / (2 * h);
+  const fp = lapseFPrime(a0, M, A, r0);
   // Paper Eq. B.4: w_B = -(a_0 F'_0 + 2 F_0) / (4 F_0)
   return -(a0 * fp + 2 * f) / (4 * f);
 }
@@ -55,8 +54,7 @@ function calibrateOmega(a0, M, A, r0) {
 function barotropicVpp(a0, M, A, r0) {
   const f = lapseF(a0, M, A, r0);
   if (f <= 0) return NaN;
-  const h = 1e-7;
-  const fp = (lapseF(a0 + h, M, A, r0) - lapseF(a0 - h, M, A, r0)) / (2 * h);
+  const fp = lapseFPrime(a0, M, A, r0);
   const fpp = lapseFDblPrime(a0, M, A, r0);
   return fpp + fp / a0 - (fp * fp) / f;
 }
@@ -65,8 +63,7 @@ function barotropicVpp(a0, M, A, r0) {
 function calibratePhantomParams(a0, M, A, r0, params) {
   const f = lapseF(a0, M, A, r0);
   if (f <= 0) return NaN;
-  const h = 1e-7;
-  const fp = (lapseF(a0 + h, M, A, r0) - lapseF(a0 - h, M, A, r0)) / (2 * h);
+  const fp = lapseFPrime(a0, M, A, r0);
   const sigma0 = -Math.sqrt(f) / (2 * Math.PI * a0);
   // From V'(a₀) = F' + 8π²a₀σ₀²(2w_eq + 1) = 0:
   // w_eq = [-F'/(8π²a₀σ₀²) - 1]/2, Ap = w_eq/(-2-w_eq)
@@ -137,8 +134,7 @@ function effPotPrimeBarotropicNumerical(a, a0, s0, omega) {  // #M2 renamed to "
   const n_sigma = 2.0 * (1.0 + omega);  
   // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ) 
   const sigma_sq_scaled = (s0 * s0) * Math.pow(a / a0, -n_sigma);
-  const h = 1e-7;
-  return (lapseF(a + h, M_val, A_val, r0_val) - lapseF(a - h, M_val, A_val, r0_val)) / (2 * h) +  
+  return lapseFPrime(a, M_val, A_val, r0_val) +  
          2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;  
 }
 /** Fast numerical first derivative for barotropic EOS — uses pre-computed F' grid (zero hypergeom calls).

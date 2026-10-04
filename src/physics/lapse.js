@@ -1,6 +1,15 @@
 // Regularized Letelier-Alencar string-cloud black hole lapse function  
 // Paper: arXiv:2610.00131, Eq. 2.1-2.2
 
+// Numerical differentiation step sizes — used by lapseFPrime, lapseFDblPrime, and
+// inline FD in potential.js. Must match across files for consistent calibration.
+var FD_FIRST_DERIV_H = 1e-7;
+var FD_SECOND_DERIV_H = 1e-5;
+
+// Parameter tolerance for grid rebuild check — relaxed from tighter values to tolerate
+// IEEE 754 float noise in UI slider (string→float) conversions.
+var PARAM_TOL = { M: 1e-7, A: 1e-6, r0: 1e-7 };
+
 function hypergeom2F1(a, b, c, z) {
   // Compute _2F₁(a,b;c;z) using series expansion with analytic continuation.  
   function series(aa, bb, cc, zz, maxIter, tol) {
@@ -55,12 +64,11 @@ var fp_grid = null;   // {r: Float64Array, f: Float64Array, fp: Float64Array}
 var last_fp_params = null;  // Last (M,A,r0) used to build the current grid
 
 /** Rebuild params check — deduplicated helper. */
-function _paramsMatch(M_in, A_in, r0_val_in) {  
+function _paramsMatch(M_in, A_in, r0_val_in) {
   var gp = last_fp_params;
-  // Tolerances relaxed to prevent unnecessary rebuilds on UI slider interactions. 
-  // Original: M=1e-8, A=1e-9, r0=1e-10 — too tight vs IEEE 754 float noise.  
-  if (!gp || Math.abs(gp.M - M_in) > 1e-7 
-    || Math.abs(gp.A - A_in) > 1e-6 || Math.abs(gp.r0 - r0_val_in) > 1e-7) {  
+  // Tolerances relaxed to prevent unnecessary rebuilds on UI slider interactions.
+  if (!gp || Math.abs(gp.M - M_in) > PARAM_TOL.M
+    || Math.abs(gp.A - A_in) > PARAM_TOL.A || Math.abs(gp.r0 - r0_val_in) > PARAM_TOL.r0) {  
     return false;
   }
   return true;
@@ -119,8 +127,8 @@ function getFPrimeInterp(r, M_val_in, A_val_in, r0_val_in) {
 
   var grid = fp_grid;
   if (!grid || !isFinite(grid.r[0])) {
-    // Numerical differentiation fallback
-    var h = 1e-7;
+    // Numerical differentiation fallback — grid not yet built or invalid
+    var h = FD_FIRST_DERIV_H;
     return (lapseF(r + h, M_val_in, A_val_in, r0_val_in) - lapseF(r - h, M_val_in, A_val_in, r0_val_in)) / (2 * h);
   }
 
@@ -143,7 +151,7 @@ function getFInterp(r, M_val_in, A_val_in, r0_val_in) {
   if (!_paramsMatch(M_val_in, A_val_in, r0_val_in)) initFPGrid(M_val_in, A_val_in, r0_val_in);
 
   var grid = fp_grid;
-  if (!grid || !isFinite(grid.r[0])) return lapseF(r, M_val_in, A_val_in, r0_val_in); // fallback
+  if (!grid || !isFinite(grid.r[0])) return lapseF(r, M_val_in, A_val_in, r0_val_in); // fallback (grid not yet built)
 
   var lo = _binarySearch(0, grid.r.length - 1, grid.r, r);
 
@@ -165,9 +173,9 @@ function _binarySearch(lo, hi, arr, r) {
   return lo;
 }
 
-function lapseFDblPrime(r, M, A, r0, h) { if (!h) h = 1e-5; return (lapseF(r + h, M, A, r0) - 2 * lapseF(r, M, A, r0) + lapseF(r - h, M, A, r0)) / (h * h); }
+function lapseFDblPrime(r, M, A, r0, h) { if (!h) h = FD_SECOND_DERIV_H; return (lapseF(r + h, M, A, r0) - 2 * lapseF(r, M, A, r0) + lapseF(r - h, M, A, r0)) / (h * h); }
 
 /** Numerical first derivative of lapseF using central difference. */
-function lapseFPrime(r, M, A, r0, h) { if (!h) h = 1e-7; return (lapseF(r + h, M, A, r0) - lapseF(r - h, M, A, r0)) / (2 * h); }
+function lapseFPrime(r, M, A, r0, h) { if (!h) h = FD_FIRST_DERIV_H; return (lapseF(r + h, M, A, r0) - lapseF(r - h, M, A, r0)) / (2 * h); }
 
 export { lapseF, lapseFPrime, lapseFDblPrime, initFPGrid, getFPrimeInterp };
