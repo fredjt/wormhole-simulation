@@ -24,9 +24,12 @@ function destroyFPGrid() {
 }
 
 // Parameter tolerance for grid rebuild check — chosen to be:
-//   - Tighter than UI slider quantization noise (prevents spurious rebuilds)
+//   - Tighter than UI slider quantization noise (0.01 step on all sliders)
 //   - Looser than grid numerical precision floor (~hi2p ≈ 4e-5)
 //   - Tight enough to catch genuine parameter changes
+//   - A uses 1e-6 (10× looser than M/r0) because the string cloud parameter
+//     A has a smaller dynamic range [0,1] vs M [0.3,5], so relative changes
+//     in A are more significant for the same absolute delta.
 var PARAM_TOL = { M: 1e-7, A: 1e-6, r0: 1e-7 };
 
 function hypergeom2F1(a, b, c, z) {
@@ -43,15 +46,15 @@ function hypergeom2F1(a, b, c, z) {
   }
 
   // Piecewise iteration count scaled with |z|.
+  // Actual iteration limits: ≤100 for |z|≤0.3, ≤540 for 0.3<|z|≤0.9, ≤~750 for |z|>0.9.
+  // The tolerance check (Math.abs(term) < tol * |result|) normally catches early
+  // convergence well before these caps, so the max values are safety nets.
   var absZ = Math.abs(z);
   if (absZ <= 0.3) {
     // Minimum 100 iterations ensures convergence near the |z|=0.3 branch boundary.
-    // The tolerance check (Math.abs(term) < tol * |result|) normally catches early
-    // convergence well before the max, so the floor mainly protects the boundary.
     return series(a, b, c, z, Math.max(Math.min(150 * absZ + 20, 80), 100), 1e-14);
   } else if (absZ <= 0.9) {
-    // Smooth formula: (3 - absZ) * 200 gives 420 at |z|=0.9 down to 420 at |z|=0.3.
-    // Math.ceil ensures integer iterations; the floor of 100 is a safety net.
+    // Smooth formula: (3 - absZ) * 200 gives ~420 at |z|=0.9, ~540 at |z|=0.3.
     var iter = Math.max(Math.ceil((3 - absZ) * 200), 100);
     return series(a, b, c, z, iter, 1e-14);
   }
@@ -63,7 +66,7 @@ function hypergeom2F1(a, b, c, z) {
     return factor * series(c - a, b, c, zNew, 200, 1e-14);
   }
 
-  // Extreme |z| after continuation: more iterations for precision (#7 fix).
+  // Extreme |z| after continuation: more iterations for precision.
   var iter = Math.max(Math.ceil((3 - absZ / (absZ + 1)) * 500), 200);
   return factor * series(c - a, b, c, zNew, iter, 1e-14);
 }

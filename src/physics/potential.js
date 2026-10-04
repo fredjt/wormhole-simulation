@@ -1,5 +1,6 @@
 // Import getFPrimeInterp from lapse module
 import { getFPrimeInterp, lapseFPrime } from './lapse.js';
+import { computeSigmaFromEOS } from './eos.js';
 // Unified Vpp computation — single source of truth for stability determination.
 // Uses numerical second derivative of the effective potential via central differences,
 // which correctly accounts for how sigma changes when 'a' is perturbed (including
@@ -130,8 +131,14 @@ function calibrateModCosmicChap(a0, M, A, r0) {
   }
   return bestAmcc;
 }
-/** Fast numerical first derivative for barotropic EOS — uses central-difference FD via lapseFPrime.
+/** Numerical first derivative for barotropic EOS — uses central-difference FD via lapseFPrime.
  * Used for calibration and stability analysis. Slower than the Fast variant but more accurate.
+ *
+ * ⚠️ Barotropic-only: This function implements the analytical shortcut derived specifically
+ * for the barotropic EOS model (σ ∝ a^(-n_σ) where n_σ = 2(1+ω)). It should NOT be called
+ * with phantom, chaplygin, or other EOS models — those require the general effPot()/effPotPrime()
+ * path which correctly dispatches through computeSigmaFromEOS.
+ *
  * Uses globals M_val/A_val/r0_val set by initSim() — same convention as calibrateOmega(), barotropicVpp(). */
 function effPotPrimeBarotropicFiniteDiff(a, a0, s0, omega) {
   const n_sigma = 2.0 * (1.0 + omega);
