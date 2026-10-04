@@ -76,8 +76,8 @@ function phantomVpp(a0, M, A, r0, params) {
   const s0 = -Math.sqrt(Math.max(lapseF(a0, M, A, r0), 0)) / (2 * Math.PI * a0);
   // Use numerical second derivative for accuracy with variable EOS
   const h = 1e-5;
-  const Vpp = (effPot(a0 + h, a0, s0, 'phantom', params) 
-             - 2 * effPot(a0, a0, s0, 'phantom', params) 
+  const Vpp = (effPot(a0 + h, a0, s0, 'phantom', params)
+             - 2 * effPot(a0, a0, s0, 'phantom', params)
              + effPot(a0 - h, a0, s0, 'phantom', params)) / (h * h);
   return Vpp;
 }
@@ -134,21 +134,21 @@ function calibrateModCosmicChap(a0, M, A, r0) {
  * Used for calibration and stability analysis. Slower than the Fast variant but more accurate.
  * Uses globals M_val/A_val/r0_val set by initSim() — same convention as calibrateOmega(), barotropicVpp(). */
 function effPotPrimeBarotropicFiniteDiff(a, a0, s0, omega) {
-  const n_sigma = 2.0 * (1.0 + omega);  
-  // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ) 
+  const n_sigma = 2.0 * (1.0 + omega);
+  // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ)
   const sigma_sq_scaled = (s0 * s0) * Math.pow(a / a0, -n_sigma);
-  return lapseFPrime(a, M_val, A_val, r0_val) +  
-         2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;  
+  return lapseFPrime(a, M_val, A_val, r0_val) +
+         2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;
 }
 /** Fast numerical first derivative for barotropic EOS — uses precomputed F' grid interpolation.
  * Used during RK4 integration for performance. Faster than Numerical variant but uses grid interpolation.
  * Uses globals M_val/A_val/r0_val set by initSim() via getFPrimeInterp. */
 function effPotPrimeBarotropicFast(a, a0, s0, omega) {
-  const n_sigma = 2.0 * (1.0 + omega);  
-  // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ) 
+  const n_sigma = 2.0 * (1.0 + omega);
+  // σ² at scale factor ratio: σ₀² · (a/a₀)^(-n_σ)
   const sigma_sq_scaled = (s0 * s0) * Math.pow(a / a0, -n_sigma);
-  return getFPrimeInterp(a, M_val, A_val, r0_val) +  
-         2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;  
+  return getFPrimeInterp(a, M_val, A_val, r0_val) +
+         2.0 * Math.PI * Math.PI * n_sigma * a * sigma_sq_scaled;
 }
 // Export list:
 // barotropicVpp and phantomVpp remain exported for analytical reference and test coverage.

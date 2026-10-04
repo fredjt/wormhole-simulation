@@ -82,9 +82,9 @@ function updateEosParamsUI(){
     const syncToSlider = () => {
       numInput.value = Math.round(parseFloat(numInput.value)*100)/100;
       const slider = document.getElementById(sliderId);
-      if (slider) { 
+      if (slider) {
         // Update slider FIRST so readParams captures current values from DOM
-        slider.value = numInput.value; 
+        slider.value = numInput.value;
         scheduleReadParams();
       }
     };
@@ -97,10 +97,10 @@ function updateEosParamsUI(){
         syncToSlider();
       }
     });
-    
+
     // Spin buttons - mirror static slider behavior with debouncing
     const step = parseFloat(numInput.step || '0.01');
-    
+
     [wrapper.querySelector('.spin-button-up'), wrapper.querySelector('.spin-button-down')].forEach((btn, idx) => {
       btn.addEventListener('click', () => {
         let val = parseFloat(numInput.value);
@@ -116,8 +116,8 @@ function updateEosParamsUI(){
     // Keyboard support for spin buttons (Enter/Space) and arrow keys in number input
     [wrapper.querySelector('.spin-button-up'), wrapper.querySelector('.spin-button-down')].forEach((btn, idx) => {
       btn.addEventListener('keydown', (e) => {
-        if ((e.key === 'Enter' || e.key === ' ') && numInput !== document.activeElement) { 
-          // Only handle on spin buttons when they have focus, not number input  
+        if ((e.key === 'Enter' || e.key === ' ') && numInput !== document.activeElement) {
+          // Only handle on spin buttons when they have focus, not number input
           e.preventDefault();
           let val = parseFloat(numInput.value);
           if (!isNaN(val)) {
@@ -138,9 +138,9 @@ function updateEosParamsUI(){
     // Blur validation - restore slider value or clamp on invalid input
     numInput.addEventListener('blur', () => {
       let val = parseFloat(numInput.value);
-      if (isNaN(val)) { 
+      if (isNaN(val)) {
         const slider = document.getElementById(sliderId);
-        if (slider) numInput.value = Math.round(parseFloat(slider.value)*100)/100; 
+        if (slider) numInput.value = Math.round(parseFloat(slider.value)*100)/100;
       } else {
         val = Math.max(parseFloat(numInput.min), Math.min(parseFloat(numInput.max), val));
         numInput.value = Math.round(val * 100) / 100;

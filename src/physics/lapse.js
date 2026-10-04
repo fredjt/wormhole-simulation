@@ -1,4 +1,4 @@
-// Regularized Letelier-Alencar string-cloud black hole lapse function  
+// Regularized Letelier-Alencar string-cloud black hole lapse function
 // Paper: arXiv:2610.00131, Eq. 2.1-2.2
 
 // Numerical differentiation step sizes for lapseF derivatives used by calibration
@@ -30,12 +30,12 @@ function destroyFPGrid() {
 var PARAM_TOL = { M: 1e-7, A: 1e-6, r0: 1e-7 };
 
 function hypergeom2F1(a, b, c, z) {
-  // Compute _2F₁(a,b;c;z) using series expansion with analytic continuation.  
+  // Compute _2F₁(a,b;c;z) using series expansion with analytic continuation.
   function series(aa, bb, cc, zz, maxIter, tol) {
     var result = 1.0;
     var term = 1.0;
     for (var n = 1; n <= maxIter; n++) {
-      term *= (aa + n - 1) * (bb + n - 1) / ((cc + n - 1) * n) * zz;  
+      term *= (aa + n - 1) * (bb + n - 1) / ((cc + n - 1) * n) * zz;
       result += term;
       if (Math.abs(term) < tol * Math.max(Math.abs(result), 1.0)) break;
     }
@@ -43,33 +43,33 @@ function hypergeom2F1(a, b, c, z) {
   }
 
   // Piecewise iteration count scaled with |z|.
-  var absZ = Math.abs(z);  
+  var absZ = Math.abs(z);
   if (absZ <= 0.3) {
     // Ensure minimum 100 iterations near boundary with next branch to avoid
     // ~8× discontinuity at |z|=0.3 (65 vs 540 iterations).  Tolerance check
     // (Math.abs(term) < tol * |result|) normally catches early convergence.
     return series(a, b, c, z, Math.max(Math.min(150 * absZ + 20, 80), 100), 1e-14);
-  } else if (absZ <= 0.9) {  
+  } else if (absZ <= 0.9) {
     var iter = Math.max(Math.ceil((3 - absZ) * 200), 100);
     return series(a, b, c, z, iter, 1e-14);
   }
 
-  // Analytic continuation for |z| > 0.9: factor*(1-z)^(-b) identity.  
+  // Analytic continuation for |z| > 0.9: factor*(1-z)^(-b) identity.
   var factor = Math.pow(1 - z, -b);
   var zNew = z / (z - 1);
   if (Math.abs(zNew) < 0.95) {
-    return factor * series(c - a, b, c, zNew, 200, 1e-14);  
+    return factor * series(c - a, b, c, zNew, 200, 1e-14);
   }
 
-  // Extreme |z| after continuation: more iterations for precision (#7 fix).  
+  // Extreme |z| after continuation: more iterations for precision (#7 fix).
   var iter = Math.max(Math.ceil((3 - absZ / (absZ + 1)) * 500), 200);
   return factor * series(c - a, b, c, zNew, iter, 1e-14);
 }
 
-function lapseF(r, M, A, r0) {  
+function lapseF(r, M, A, r0) {
     if (r <= 0 || !isFinite(M) || !isFinite(A) || !isFinite(r0)) return NaN;
   var ratio = r / r0;
-  // Compute -r^4/r_0^4 correctly as -(x² * x²).  
+  // Compute -r^4/r_0^4 correctly as -(x² * x²).
   var z = -(ratio * ratio) * (ratio * ratio);
 
   var fg = hypergeom2F1(-0.5, -0.25, 0.75, z);
@@ -80,12 +80,12 @@ function lapseF(r, M, A, r0) {
   }
 
   var bracket = 1.0 - (2.0 * M / r - A * r0 * r0 / (r * r) * fg);
-  return bracket * Math.pow(1.0 + r0 / r, -4);  
+  return bracket * Math.pow(1.0 + r0 / r, -4);
 }
 
 // ================================================================
-// Pre-computed F(r), dF/dr grid for fast interpolation during simulation. 
-var fp_grid = null;   // {r: Float64Array, f: Float64Array, fp: Float64Array}  
+// Pre-computed F(r), dF/dr grid for fast interpolation during simulation.
+var fp_grid = null;   // {r: Float64Array, f: Float64Array, fp: Float64Array}
 var last_fp_params = null;  // Last (M,A,r0) used to build the current grid
 
 /** Rebuild params check — deduplicated helper. */
@@ -93,13 +93,12 @@ function _paramsMatch(M_in, A_in, r0_val_in) {
   var gp = last_fp_params;
   // Tolerances relaxed to prevent unnecessary rebuilds on UI slider interactions.
   if (!gp || Math.abs(gp.M - M_in) > PARAM_TOL.M
-    || Math.abs(gp.A - A_in) > PARAM_TOL.A || Math.abs(gp.r0 - r0_val_in) > PARAM_TOL.r0) {  
+    || Math.abs(gp.A - A_in) > PARAM_TOL.A || Math.abs(gp.r0 - r0_val_in) > PARAM_TOL.r0) {
     return false;
   }
   return true;
 }
 
-/** Build a dense (N=256) grid of (r, F(r), dF/dr) for given M,A,r0. */ 
 /** Build a dense (r, F(r), dF/dr) lookup grid for fast barotropic derivative interpolation.
  * @param {number} [N=256] Grid resolution (points). Higher = more accurate but slower construction.
  *   Typical values: 128-512. Accuracy scales approximately as O(1/N²) for linear interpolation. */
@@ -121,40 +120,39 @@ function initFPGrid(M, A, r0, N) {
   var dr = (rMax - rMin) / (N - 1);
   if (!isFinite(dr)) { console.warn('initFPGrid: non-finite grid spacing'); return false; }
 
-  // Use a temporary array to make construction atomic (partial grid never stored if loop fails).  
-  var tmpR = new Float64Array(N), 
+  // Use a temporary array to make construction atomic (partial grid never stored if loop fails).
+  var tmpR = new Float64Array(N),
       tmpF = new Float64Array(N),
-      tmpFP = new Float64Array(N);  
+      tmpFP = new Float64Array(N);
 
   for (var i = 0; i < N; ++i) {
-    var ri = rMin + dr * i;  
-            try {
-      if (!isFinite(ri)) throw 'non-finite radius at index ' + i;
-      tmpR[i] = ri;
-            tmpF[i] = lapseF(ri, M, A, r0);
+    var ri = rMin + dr * i;
+    try {
+        if (!isFinite(ri)) throw 'non-finite radius at index ' + i;
+        tmpR[i] = ri;
+        tmpF[i] = lapseF(ri, M, A, r0);
 
 
-      if (!isFinite(tmpF[i])) throw new Error('NaN in F');  // Abort grid construction on bad value.
+        if (!isFinite(tmpF[i])) throw new Error('NaN in F');  // Abort grid construction on bad value.
 
-      // Grid derivative step size: adaptive based on local grid spacing.
-      // Differs from FD_FIRST_DERIV_H (1e-7) used in lapseFPrime() for calibration.
-      // Grid uses a larger step (typically ~dr/260) for numerical stability during
-      // grid construction — small h values can cause cancellation error with hypergeom.
-      var hi2p = Math.max(rMin * 5e-7, dr / (N + 4));
-      if (!isFinite(hi2p)) throw 'non-finite hi2p at index ' + i;
-      tmpFP[i] = (lapseF(ri + hi2p, M, A, r0) - lapseF(ri - hi2p, M, A, r0)) / (2.0 * hi2p);
+        // Grid derivative step size: adaptive based on local grid spacing.
+        // Differs from FD_FIRST_DERIV_H (1e-7) used in lapseFPrime() for calibration.
+        // Grid uses a larger step (typically ~dr/260) for numerical stability during
+        // grid construction — small h values can cause cancellation error with hypergeom.
+        var hi2p = Math.max(rMin * 5e-7, dr / (N + 4));
+        if (!isFinite(hi2p)) throw 'non-finite hi2p at index ' + i;
+        tmpFP[i] = (lapseF(ri + hi2p, M, A, r0) - lapseF(ri - hi2p, M, A, r0)) / (2.0 * hi2p);
 
-      if (!isFinite(tmpFP[i])) throw new Error('NaN in dF/dr');
-        } catch(e) {
-      console.warn('initFPGrid abort at index ' + i + ': ' + e);
-      return false;
-
+        if (!isFinite(tmpFP[i])) throw new Error('NaN in dF/dr');
+    } catch(e) {
+        console.warn('initFPGrid abort at index ' + i + ': ' + e);
+        return false;
     }
   }
 
   // Only commit the grid if ALL values were valid. No second loop needed.
   fp_grid = {r: tmpR, f: tmpF, fp: tmpFP};
-  last_fp_params = {M: M, A: A, r0: r0}; 
+  last_fp_params = {M: M, A: A, r0: r0};
   return true; // Indicate successful construction.
 }
 
