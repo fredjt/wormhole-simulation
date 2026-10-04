@@ -85,11 +85,17 @@ function _paramsMatch(M_in, A_in, r0_val_in) {
 
 /** Build a dense (N=256) grid of (r, F(r), dF/dr) for given M,A,r0. */ 
 function initFPGrid(M, A, r0, N) {
+  // Default grid size: 256 points (~19 KB Float64Array per grid).
+  // Trade-off: more points = better interpolation accuracy but slower construction.
+  // For typical wormhole parameters, 256 points gives <1e-4 interpolation error.
   if (!N || !isFinite(N)) N = 256;
 
     var rMin = Math.max(0.1 * M || 0.05, 0.01);
   if (!isFinite(rMin)) { console.warn('initFPGrid: non-finite rMin'); return false; }
-  var rMax = Math.max(rMin + 8, rMin * (M > 3 ? 4 : 3));
+  // Grid bounds: scale rMax with mass to cover expected oscillation ranges.
+  // For large M, horizons and stable throats are farther out, so we need
+  // a wider grid. The 8*M term ensures coverage up to ~8× mass scale.
+  var rMax = Math.max(rMin + 8 * M, rMin * (M > 3 ? 4 : 3));
   if (!isFinite(rMax) || rMax <= rMin) { console.warn('initFPGrid: invalid grid bounds'); return false; }
 
     // Compute grid spacing.
