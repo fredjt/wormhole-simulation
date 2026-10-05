@@ -54,7 +54,8 @@ function calibrateOmega(a0, M, A, r0) {
 // Barotropic V'': V''_B = F'' + F'/a₀ - (F')²/F  [Eq. B.6]
 function barotropicVpp(a0, M, A, r0) {
   const f = lapseF(a0, M, A, r0);
-  // Guard against small a₀ where lapceFDblPrime clamps silently.
+  // Guard against non-finite lapse, zero/negative throat radius, or very small a₀ where
+  // lapseFDblPrime silently clamps radii for numerical stability.
   if (!isFinite(f) || f <= 0 || a0 < 1e-3) return NaN;
 
   const fp = lapseFPrime(a0, M, A, r0);
@@ -141,23 +142,26 @@ function resolveParams(mIn, aIn, r0In) {
 }
 
 /** @internal Compute σ²(a) for barotropic EOS: σ₀²·(a/a₀)^{−4(1+w)}.
- * NOT validated — callers must ensure omega is valid (NaN → NaN result). */
+ *
+ * Returns the square of surface tension at scale factor `a`, given equilibrium values (a₀, s0).
+ * For a barotropic fluid with equation-of-state parameter ω, energy conservation gives n_σ = 2(1+ω)
+ * and σ²(a) ∝ (a/a₀)^{−4(1+w)}. This is used in the analytical shortcut for V'(a).
+ * NOT validated — callers must ensure omega is valid; NaN inputs produce NaN output. */
 function _barotropicSigmaSq(a, a0, s0, omega) {
-  const n_sigma = 2.0 * (1.0 + omega);
-  return (s0 * s0) * Math.pow(a / a0, -2 * n_sigma);
+  return (s0 * s0) * Math.pow(a / a0, -4.0 * (1.0 + omega));
 }
 
 /** Accurate first derivative for barotropic EOS — uses central-difference FD via lapseFPrime.
  * Used for calibration and stability analysis. Slower than the Fast variant but more accurate.
  *
- * V'(a) = F'(a) + 8π²·ω · a₀^{-1} · σ(a)^{-2(1+w)}   where n_σ = 2(1+w)
- * Derived from: d/da [F - 4π² a² σ²] with σ ∝ (a/a₀)^{−nₛᵢgma}
+ * V'(a) = F'(a) + 8π²·ω / a · σ₀²(a/a₀)^{−4(1+w)}
+ * Derived from: d/da [F − 4π² a² σ²] with σ ∝ (a/a₀)^{−(1+ω)}, n_σ = 2(1+ω)
  *
  * Coefficient derivation:
- *   V_term = −4π²·a²·σ(a)², where σ(a) = s0 · (a/a₀)^{(1+w)}.
- *   d/da[V_term] = 8π²·ω · a^{−2w−1} · a₀^{2w+2} · s0²
- *               = 8π²·ω / a × σ₀²(a/a₀)^{−2(1+w)}
- *   The code computes this as: 8×π²×omega × _barotropicSigmaSq(...).
+ *   V_term(a) = −4π²·a²·σ(a)², where σ(a) = s0 · (a/a₀)^{(1+w)}.
+ *   dV_term/da = −8π² a σ² + (−4π² a²)(dσ²/da)
+ *              = 8π² ω / a · [s0² (a/a₀)^{−4(1+w)}]
+ *               = 8π²·ω / a × _barotropicSigmaSq(a, a₀, s₀, ω).
  *
  * Eq. references:
  *   • ArXiv:2610.00131 §B — barotropic EOS derivation
@@ -180,13 +184,13 @@ function _barotropicSigmaSq(a, a0, s0, omega) {
 function effPotPrimeBarotropicAccurate(a, a0, s0, omega, M_in, A_in, r0_in) {
   var p = resolveParams(M_in, A_in, r0_in);
   return lapseFPrime(a, p.M, p.A, p.r0) +
-         8 * Math.PI * Math.PI * omega * a * _barotropicSigmaSq(a, a0, s0, omega);
+         (8 * Math.PI * Math.PI * omega / a) * _barotropicSigmaSq(a, a0, s0, omega);
 }
 
 /** Fast first derivative for barotropic EOS — uses precomputed F' grid interpolation.
  * Used during RK4 integration for performance (arXiv:2610.00131 §B).
  *
- * V'(a) = F'_interp(a) + 8π²·ω · a₀^{-1} · σ(a)^{-2(1+w)}   where n_σ = 2(1+w)
+ * V'(a) = F'_interp(a) + 8π²·ω / a · σ₀²(a/a₀)^{−4(1+w)}
  * The grid-interpolated F' replaces the expensive hypergeom call per RK4 substep.
  *
  * Note on coefficient: same derivation as effPotPrimeBarotropicAccurate — see its docstring.
@@ -206,7 +210,7 @@ function effPotPrimeBarotropicAccurate(a, a0, s0, omega, M_in, A_in, r0_in) {
 function effPotPrimeBarotropicFast(a, a0, s0, omega, M_in, A_in, r0_in) {
   var p = resolveParams(M_in, A_in, r0_in);
   return getFPrimeInterp(a, p.M, p.A, p.r0) +
-         8 * Math.PI * Math.PI * omega * a * _barotropicSigmaSq(a, a0, s0, omega);
+         (8 * Math.PI * Math.PI * omega / a) * _barotropicSigmaSq(a, a0, s0, omega);
 }
 
 // Export list:

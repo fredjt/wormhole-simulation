@@ -9,6 +9,12 @@ var FD_SECOND_DERIV_H = 1e-5;
 
 // Rate-limit for out-of-bounds warnings during integration (~40/sec max when active).
 // Set DEBUG_GRID_INTERP=true to disable rate limiting for diagnostics.
+// Browser-compatible time source — falls back to Date.now() in Node.js.
+// Used by both the rate-limiter (_shouldWarn) and clamping-detection timer.
+var _perfNow = typeof performance !== 'undefined' && performance.now
+    ? () => performance.now()
+    : () => Date.now();
+
 var DEBUG_GRID_INTERP = typeof globalThis !== 'undefined' && globalThis.DEBUG_GRID_INTERP;
 var _warnCount = 0;
 var _warnLastTime = 0;
@@ -16,7 +22,7 @@ var WARN_WINDOW_MS = 250; // ms — window length before counter resets
 var MAX_WARNINGS_PER_WINDOW = 10;
 function _shouldWarn() {
   if (DEBUG_GRID_INTERP) return true;  // No rate limiting in debug mode
-  var now = performance.now();
+  var now = _perfNow();
   if (now - _warnLastTime > WARN_WINDOW_MS) { _warnCount = 0; _warnLastTime = now; }
   if (_warnCount >= MAX_WARNINGS_PER_WINDOW) return false;
   _warnCount++;
@@ -194,8 +200,12 @@ function initFPGrid(M, A, r0, N) {
   //     and throat oscillations typically stay within [~0.1 M, ~3–8 M].
   //   - The "+ RMAX_OFFSET_MULTIPLIER*M" term ensures coverage up to
   //     ~RMAX_OFFSET_MULTIPLIER× mass scale for unstable barotropic trajectories.
-  var rMax = Math.max(rMin + RMAX_OFFSET_MULTIPLIER * M,
-                      rMin * (M > MASS_THRESHOLD_FACTOR ? GRID_MAX_FACTOR_HIGH_MASS : GRID_MAX_FACTOR_LOW_MASS));
+  // Ensure grid covers at least ~4× mass for stability analysis near/inside horizon region.
+  var rMaxAbs = Math.max(4 * M, 0.1);   // minimum absolute coverage
+  var rMaxFactorBased = rMin *
+      (M > MASS_THRESHOLD_FACTOR ? GRID_MAX_FACTOR_HIGH_MASS : GRID_MAX_FACTOR_LOW_MASS);
+  var rMaxOffsetBased = rMin + RMAX_OFFSET_MULTIPLIER * M;
+  var rMax = Math.max(rMaxAbs, rMaxOffsetBased, rMaxFactorBased);
   if (!isFinite(rMax) || rMax <= rMin) { console.warn('initFPGrid: invalid grid bounds'); return false; }
 
   // Compute grid spacing.
@@ -362,7 +372,7 @@ var _clampingDetected = false;
  * warning can re-fire if out-of-bounds conditions persist or recur later in long runs. */
 var CLAMPING_DETECTION_WINDOW = 5000; // ms — reset clamping flag after this idle period
 function _markClampingDetected() {
-  var now = performance.now();
+  var now = _perfNow();
   // Reset the session-level flag if no recent clamping events (allows re-warning on long runs)
   if (_clampingLastTime > 0 && now - _clampingLastTime < CLAMPING_DETECTION_WINDOW) return;
 
