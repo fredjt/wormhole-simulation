@@ -4,7 +4,9 @@
 // and updateEosParamsUI slider initialization so a single constant map drives display + physics logic.
 import * as state from '../simulation/state.js';
 
-/** Reads all parameters into globals. Note: `eosModel` is sourced from `state.eosModel` (the single source of truth), not the DOM select element — callers must ensure they stay in sync via main.js's change handler or direct assignment to `window.eosModel`. */
+/** Reads all parameters into globals. Note: eosModel always comes from state.eosModel
+ * (never re-read from DOM). Other parameters fall back to hardcoded defaults when DOM elements are missing,
+ * making readParams() safe for unit tests and headless environments where no UI is rendered. */
 function readParams(){
   const g=id=>document.getElementById(id);
 
@@ -14,7 +16,7 @@ function readParams(){
   A_val   = parseFloat(g('sliderA')?.value || '0.3');
   r0_val  = parseFloat(g('sliderR0')?.value || '0.2');
   a0_val  = parseFloat(g('sliderA0')?.value || '2.5');
-  // Finding 3: Use state.eosModel (global) instead of re-reading from DOM to keep source-of-truth consistent.
+  // Use state.eosModel (global singleton) instead of re-reading from DOM to keep source-of-truth consistent.
   eosModel=state.eosModel;
   speedMultiplier=parseFloat(g('sliderSpeed')?.value||'1.0');
   autoStop=g('chkAutoStop')?.checked||false;
@@ -47,7 +49,7 @@ function readParams(){
       eosParams.Amcc   = safeParse('sliderAmcc', defaults?.Amcc);
       eosParams.m_mcc  = safeParse('sliderMmcc', defaults?.m_mcc); break;
     default:
-      // Finding 4 (Low): Use error-level logging for visibility during development; falls back to safe defaults at runtime.
+      
       console.error(`Unknown eosModel "${eosModel}" in readParams! Check state.EOS_DEFAULTS for valid keys.`);
       Object.keys(eosParams).forEach(k => delete eosParams[k]);
       Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);
@@ -70,13 +72,7 @@ function makeEosRow(labelHtml, inputId, minVal, maxVal, stepVal, displayValue){
 }
 
 function updateEosParamsUI(){
-  // Reset all EOS parameters to paper-consistent defaults before creating sliders.
-  // This ensures newly-created slider elements display sensible starting points for
-  // the selected model type, regardless of what stale values happen to be in eosParams
-  // from a previously-calibrated (different) model. See PR discussion on fluid-model
-  // Finding 1: Always clear ALL known EOS keys before setting new defaults — this makes the function self-contained
-  // and safe to call from any code path (not just main.js change handler). Without clearing ghost properties here,
-  // switching phantom → barotropic would leave Ap/alpha_p/n on eosParams indefinitely.
+  // Clear all known EOS parameters before assigning new ones — prevents ghost keys when called outside the UI flow.
   const allKnownKeys = Object.values(state.EOS_DEFAULTS).flatMap(Object.keys);
   for (const k of new Set(allKnownKeys)) delete eosParams[k];
 
@@ -89,7 +85,7 @@ function updateEosParamsUI(){
     for (const k of knownKeys) eosParams[k] = uDefaults[k];        // mutate in-place on already-cleaned object.
   }
 
-  // Finding 4: Guard against missing DOM element (e.g., called from test harness or async callback).
+  //  Guard against missing DOM element (e.g., called from test harness or async callback).
   const container=document.getElementById('eosParams');
   if (!container) return;
   
@@ -114,7 +110,7 @@ function updateEosParamsUI(){
               makeEosRow('m<sub>mcc</sub>', 'sliderMmcc', '1', '5', '0.1', eosParams.m_mcc.toFixed(2)); break;
     default:
       console.warn(`Unknown eosModel "${eosModel}" — clearing stale sliders to prevent cross-model parameter leakage.`);
-      // Finding 6: Clear DOM so no old slider values persist for an unknown model.
+      
       html = '';
   }
   container.innerHTML=html;
@@ -204,7 +200,12 @@ function updateHorizonInfo(){
  * each EOS type has different parameter semantics and equilibrium conditions, so previous
  * calibration values are not preserved across switches. */
 function calibrateAtA0(){const f_a0=lapseF(a0_val,M_val,A_val,r0_val);if(f_a0<=0) { console.warn('Cannot calibrate: lapseF(a₀) ≤ 0 — check a₀ relative to horizon.'); return; }
-switch(eosModel){case'barotropic':eosParams.omega=calibrateOmega(a0_val,M_val,A_val,r0_val);break;case'phantom':eosParams.Ap=calibratePhantomParams(a0_val,M_val,A_val,r0_val,eosParams);break;case'chaplygin':eosParams.Ac=calibrateChaplyginParams(a0_val,M_val,A_val,r0_val);break;case'cosmicChap':eosParams.Agc=calibrateCosmicChap(a0_val,M_val,A_val,r0_val);break;case'modCosmicChap':eosParams.Amcc=calibrateModCosmicChap(a0_val,M_val,A_val,r0_val);break;}calibrated=true;updateEosParamsUI();resetSim();}
+switch(eosModel){case'barotropic':eosParams.omega=calibrateOmega(a0_val,M_val,A_val,r0_val);break;case'phantom':eosParams.Ap=calibratePhantomParams(a0_val,M_val,A_val,r0_val,eosParams);break;case'chaplygin':eosParams.Ac=calibrateChaplyginParams(a0_val,M_val,A_val,r0_val);break;case'cosmicChap':eosParams.Agc=calibrateCosmicChap(a0_val,M_val,A_val,r0_val);break;case'modCosmicChap':eosParams.Amcc=calibrateModCosmicChap(a0_val,M_val,A_val,r0_val);break;default:
+      console.error(`Unknown eosModel "${eosModel}" in calibrateAtA0! Check state.EOS_DEFAULTS for valid keys.`);
+      return;
+  }
+
+  calibrated=true;updateEosParamsUI();resetSim();}
 /** Initialize the simulation state with current parameters.
  * Called on every parameter change (via resetSim) and at startup. */
 function initSim() {

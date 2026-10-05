@@ -55,8 +55,8 @@ function init() {
     // setting this after would cause them to use stale values from the OLD model.
     eosModel = actualModel;
 
-    Object.keys(eosParams).forEach(k => delete eosParams[k]);  // clear stale keys from previous model
-    Object.assign(eosParams, state.EOS_DEFAULTS[actualModel]);   // assign new defaults for correct model
+    // Note: stale-key clearing is delegated to updateEosParamsUI(), which owns it as a self-contained
+    // invariant (clears ALL known EOS keys before assigning new defaults). This avoids double-clearing.
 
     calibrated = false;
     ui.updateEosParamsUI();         // reads EOS_DEFAULTS[eosModel] → now correct ✅

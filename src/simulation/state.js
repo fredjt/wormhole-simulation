@@ -24,6 +24,9 @@ export let eosModel = 'phantom';
 //       when the user changes model or slider values (not reset on sim start).
 // Pre-populate with the union of all model defaults so that any key access during early initialization
 // returns a number rather than undefined. This restores the previous defensive posture at zero runtime cost.
+// NOTE: All EOS models must have disjoint parameter keys — if two future models share a name (e.g., both
+// define 'n'), Object.assign silently overwrites earlier values with no warning. Adding new EOS types is now
+// a multi-touch change across state.js, calibration.js (readParams + updateEosParamsUI switches), and main.js.
 const _allDefaults = {};
 for (const md of Object.values(EOS_DEFAULTS)) {
     Object.assign(_allDefaults, md);
@@ -44,9 +47,10 @@ const maxHistory = 2000;
 function initSim(){
   const f_a0=lapseF(a0_val,M_val,A_val,r0_val);
   if(f_a0<=0)return;
-  let deltaAPct=parseFloat(document.getElementById('sliderDeltaA').value);
-  if(document.getElementById('chkSmallPerturb').checked)deltaAPct=0.01;
-  v_current=parseFloat(document.getElementById('sliderV0').value);
+  // Use optional chaining + defaults for safety in unit tests / non-DOM environments
+let deltaAPct=parseFloat(document.getElementById('sliderDeltaA')?.value ?? '0.01');
+if(document.getElementById('chkSmallPerturb')?.checked)deltaAPct=0.01;
+v_current=parseFloat(document.getElementById('sliderV0')?.value ?? '-0.1');
   tau=0;
   a_current=a0_val*(1+deltaAPct/100);
   timeHistory=[{tau:0,a:a_current,v:v_current}];
