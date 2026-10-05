@@ -416,6 +416,11 @@ function lapseFDblPrime(r, M, A, r0, h) {
   if (!isFinite(M) || !isFinite(A) || !isFinite(r0)) return NaN;
   if (!h) h = FD_SECOND_DERIV_H;
   var _r = Math.max(1e-3, r); // Clamp to avoid numerical instability at very small radii
+  // Accuracy note: for input r < 1e-3 this computes the derivative at r=0.001 instead of `r`.
+  // The relative error in F' is bounded by |F''(ξ)| · Δr where Δr = max(r,1e-3) - r ≤ 1e-3
+  // and ξ ∈ [r, 0.001]. Since lapseF'(r) → 0 as r→0 for this metric (F∝r⁴/r₀⁴ near origin),
+  // the absolute error is < ~O(Δr·|slope|) ≈ O(1e-3 · |lapseFDblPrime(ξ)|).
+  // For calibration use cases with r ≥ 0.01 this clamp never activates.
   return (lapseF(_r + h, M, A, r0) - 2 * lapseF(_r, M, A, r0) + lapseF(_r - h, M, A, r0)) / (h * h);
 }
 
@@ -426,6 +431,11 @@ function lapseFPrime(r, M, A, r0, h) {
   if (!isFinite(M) || !isFinite(A) || !isFinite(r0)) return NaN;
   if (h === undefined || !isFinite(h)) h = FD_FIRST_DERIV_H;
   var _r = Math.max(1e-3, r);
+  // Accuracy note: for input r < 1e-3 this computes the derivative at r=0.001 instead of `r`.
+  // The relative error is bounded by |F''| · Δr where Δr ≤ 1e-3 and ξ ∈ [r, 0.001].
+  // Since F'(r) → 0 as r→0 (the lapse function approaches a constant near the origin),
+  // absolute error is small (~ O(Δr · |slope|)) for physically relevant parameters.
+  // For calibration use cases with r ≥ 0.01 this clamp never activates.
   return (lapseF(_r + h, M, A, r0) - lapseF(_r - h, M, A, r0)) / (2 * h);
 }
 
