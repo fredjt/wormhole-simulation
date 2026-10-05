@@ -8,8 +8,6 @@ function computeSigmaFromEOS(a, a0, sigma0, model, params) {
   return sigma0;
 }
 
-let M_val=1.0,beta_val=0.3,mu_val=0.5,a0_val=1.5,eosModel='barotropic',eosParams={omega:0};
-let calibrated=false, simRunning=false, simPaused=false, tau=0, a_current=1, v_current=0;
-let timeHistory=[], phaseHistory=[], speedMultiplier=5, autoStop=true;
-
+// NOTE: M_val, A_val (beta), r0_val (mu), and all other shared globals are declared
+// in src/simulation/state.js.  This module only exports computeSigmaFromEOS.
 export { computeSigmaFromEOS };

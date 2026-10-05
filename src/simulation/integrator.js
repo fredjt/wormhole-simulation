@@ -3,7 +3,7 @@
 let lastTime = 0;
 
 function rk4Step(dt) {
-  if(!calibrated)return;
+  if (!calibrated) { simRunning = false; console.warn('Simulation paused: EOS not calibrated. Click Calibrate at a\u2080 to continue.'); return }
 
   const _a = a0_val, Mv = M_val, Av = A_val, r0v = r0_val;
   const f_a0=lapseF(_a,Mv,Av,r0v);
