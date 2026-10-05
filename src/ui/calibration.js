@@ -24,25 +24,25 @@ function readParams(){
     return parseFloat(el.value);
   };
 
-  // Default values per EOS model. These are used as safe-parse fallbacks when
-  // DOM elements are unavailable (unit tests, rapid switching). All default constants
-  // come from the single source of truth in state.js to avoid duplication.
+  // Default values per EOS model, sourced from state.EOS_DEFAULTS. These serve as
+  // secondary-safe-parse fallbacks (behind DOM slider values) to ensure physics code
+  // always has valid parameters even when sliders haven't been created yet or hold NaN.
   const defaults = state.EOS_DEFAULTS[eosModel];
   switch(eosModel){
-    case 'barotropic': eosParams.omega = safeParse('sliderOmega', defaults?.omega ?? -0.3); break;
+    case 'barotropic': eosParams.omega = safeParse('sliderOmega', defaults?.omega); break;
     case 'phantom':
-      eosParams.Ap     = safeParse('sliderAp', defaults?.Ap ?? 1);
-      eosParams.alpha_p = safeParse('sliderAlphaP', defaults?.alpha_p ?? 1);
-      eosParams.n       = safeParse('sliderN', defaults?.n ?? 5); break;
+      eosParams.Ap     = safeParse('sliderAp', defaults?.Ap);
+      eosParams.alpha_p = safeParse('sliderAlphaP', defaults?.alpha_p);
+      eosParams.n       = safeParse('sliderN', defaults?.n); break;
     case 'chaplygin':
-      eosParams.Ac     = safeParse('sliderAc', defaults?.Ac ?? 2);
-      eosParams.alpha_c = safeParse('sliderAlphaC', defaults?.alpha_c ?? 0.5); break;
+      eosParams.Ac     = safeParse('sliderAc', defaults?.Ac);
+      eosParams.alpha_c = safeParse('sliderAlphaC', defaults?.alpha_c); break;
     case 'cosmicChap':
-      eosParams.Agc   = safeParse('sliderAgc', defaults?.Agc ?? 2);
-      eosParams.n_gc  = safeParse('sliderNgc', defaults?.n_gc ?? 3); break;
+      eosParams.Agc   = safeParse('sliderAgc', defaults?.Agc);
+      eosParams.n_gc  = safeParse('sliderNgc', defaults?.n_gc); break;
     case 'modCosmicChap':
-      eosParams.Amcc   = safeParse('sliderAmcc', defaults?.Amcc ?? 2);
-      eosParams.m_mcc  = safeParse('sliderMmcc', defaults?.m_mcc ?? 3); break;
+      eosParams.Amcc   = safeParse('sliderAmcc', defaults?.Amcc);
+      eosParams.m_mcc  = safeParse('sliderMmcc', defaults?.m_mcc); break;
     default:
       console.warn(`Unknown eosModel "${eosModel}" in readParams — using barotropic as fallback.`);
       Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);

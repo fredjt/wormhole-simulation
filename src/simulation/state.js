@@ -22,8 +22,8 @@ export const EOS_DEFAULTS = {
 export let eosModel = 'phantom';
 // NOTE: eosParams persists across initSim() calls; it is updated by readParams()
 //       when the user changes model or slider values (not reset on sim start).
-let _defaults = EOS_DEFAULTS['phantom'];  // initial defaults for phantom
-export let eosParams = { ..._defaults };
+let _initialDefaults = EOS_DEFAULTS['phantom'];  // initial defaults for phantom
+export let eosParams = { ..._initialDefaults };
 export let calibrated = false;
 export let simRunning = false;
 export let simPaused = false;

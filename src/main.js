@@ -38,14 +38,25 @@ function init() {
       if (simRunning) ui.resetSim();
     });
   });
-  
-  // EOS model selector
+
+  // EOS model selector — clear stale params immediately on switch (Finding 4).
   document.getElementById('eosSelect').addEventListener('change', () => {
-    eosModel = document.getElementById('eosSelect').value;
+    const newModel = document.getElementById('eosSelect').value;
+
+    // Clear stale properties from any previously-calibrated model before anything else reads eosParams.
+    if (state.EOS_DEFAULTS[newModel]) {
+      Object.assign(eosParams, state.EOS_DEFAULTS[newModel]);
+    } else {
+      console.warn(`Unknown EOS model "${newModel}" — using barotropic as fallback.`);
+      Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);
+    }
+
+    eosModel = newModel;
     calibrated = false;
     ui.updateEosParamsUI();
     if (simRunning) ui.resetSim();
   });
+
   
   // Buttons
   document.getElementById('btnCalibrate').addEventListener('click', ui.calibrateAtA0);
