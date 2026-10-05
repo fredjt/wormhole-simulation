@@ -39,7 +39,7 @@ function init() {
     });
   });
 
-  // EOS model selector — clear stale params immediately on switch (Finding 4).
+
   document.getElementById('eosSelect').addEventListener('change', () => {
     const newModel = document.getElementById('eosSelect').value;
 

@@ -73,12 +73,14 @@ function updateEosParamsUI(){
   // reads back slider DOM; sliders must already hold correct defaults.
   const uDefaults = state.EOS_DEFAULTS[eosModel];
   if (uDefaults) {
-    eosParams = {};                       // clear stale properties from previous model (Finding 1)
-    Object.assign(eosParams, uDefaults);   // write new defaults atomically
+    // Finding 5: Mutate in-place rather than reassigning the exported variable.
+    // Reassignment would break any closure or destructured reference held by other modules.
+    for (const k of Object.keys(eosParams)) delete eosParams[k];   // clear stale keys from previous model
+    Object.assign(eosParams, uDefaults);                             // write new defaults in-place
   } else {
-    console.warn(`Unknown eosModel "${eosModel}" in updateEosParamsUI — using barotropic as fallback.`);
-    eosParams = {};                       // clear stale properties even on unknown model
-    Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);
+    console.warn(`Unknown eosModel "${eosModel}" — using barotropic as fallback.`);
+    for (const k of Object.keys(eosParams)) delete eosParams[k];   // clear stale keys even on unknown model
+    Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);       // apply safe defaults in-place
   }
 
   const container=document.getElementById('eosParams');
@@ -101,7 +103,9 @@ function updateEosParamsUI(){
       html += makeEosRow('A<sub>mcc</sub>', 'sliderAmcc', '0.1', '10', '0.1', eosParams.Amcc.toFixed(2)) +
               makeEosRow('m<sub>mcc</sub>', 'sliderMmcc', '1', '5', '0.1', eosParams.m_mcc.toFixed(2)); break;
     default:
-      console.warn(`Unknown eosModel "${eosModel}" in updateEosParamsUI — rendering empty slider container.`);
+      console.warn(`Unknown eosModel "${eosModel}" — clearing stale sliders to prevent cross-model parameter leakage.`);
+      // Finding 6: Clear DOM so no old slider values persist for an unknown model.
+      html = '';
   }
   container.innerHTML=html;
   const rangeInputs = container.querySelectorAll('input[type="range"]');
