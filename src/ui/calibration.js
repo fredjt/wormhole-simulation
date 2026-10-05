@@ -44,7 +44,9 @@ function readParams(){
       eosParams.Amcc   = safeParse('sliderAmcc', defaults?.Amcc);
       eosParams.m_mcc  = safeParse('sliderMmcc', defaults?.m_mcc); break;
     default:
+      // Finding 2: Clear stale keys before assigning so phantom/chaplygin/etc properties don't linger.
       console.warn(`Unknown eosModel "${eosModel}" in readParams — using barotropic as fallback.`);
+      Object.keys(eosParams).forEach(k => delete eosParams[k]);
       Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);
   }
   if(g('valM'))g('valM').textContent=M_val.toFixed(2);
@@ -69,21 +71,21 @@ function updateEosParamsUI(){
   // This ensures newly-created slider elements display sensible starting points for
   // the selected model type, regardless of what stale values happen to be in eosParams
   // from a previously-calibrated (different) model. See PR discussion on fluid-model
-  // selector: when simRunning && user changes EOS, updateEosParamsUI() → resetSim()
-  // reads back slider DOM; sliders must already hold correct defaults.
+  // eosModel is guaranteed to be set by the caller (main.js or calibrateAtA0).
   const uDefaults = state.EOS_DEFAULTS[eosModel];
-  if (uDefaults) {
-    // Finding 5: Mutate in-place rather than reassigning the exported variable.
-    // Reassignment would break any closure or destructured reference held by other modules.
-    for (const k of Object.keys(eosParams)) delete eosParams[k];   // clear stale keys from previous model
-    Object.assign(eosParams, uDefaults);                             // write new defaults in-place
+  if (!uDefaults) {
+    console.warn(`Unknown eosModel "${eosModel}" in updateEosParamsUI — using barotropic as fallback.`);
+    Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);       // Finding 1: main.js already cleared stale keys; just assign new defaults.
   } else {
-    console.warn(`Unknown eosModel "${eosModel}" — using barotropic as fallback.`);
-    for (const k of Object.keys(eosParams)) delete eosParams[k];   // clear stale keys even on unknown model
-    Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);       // apply safe defaults in-place
+    // Update only the properties for this model (main.js caller has already cleared all prior keys).
+    const knownKeys = Object.keys(uDefaults);
+    for (const k of knownKeys) eosParams[k] = uDefaults[k];        // mutate in-place, no reassignment.
   }
 
+  // Finding 4: Guard against missing DOM element (e.g., called from test harness or async callback).
   const container=document.getElementById('eosParams');
+  if (!container) return;
+  
   let html='';
 
   // Display values for freshly-created sliders mirror the safeParse defaults above.

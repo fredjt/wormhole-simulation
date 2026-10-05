@@ -43,15 +43,20 @@ function init() {
   document.getElementById('eosSelect').addEventListener('change', () => {
     const newModel = document.getElementById('eosSelect').value;
 
-    // Clear stale properties from any previously-calibrated model before anything else reads eosParams.
     if (state.EOS_DEFAULTS[newModel]) {
+      // Known valid model — clear stale keys and assign its defaults.
+      Object.keys(eosParams).forEach(k => delete eosParams[k]);
       Object.assign(eosParams, state.EOS_DEFAULTS[newModel]);
     } else {
       console.warn(`Unknown EOS model "${newModel}" — using barotropic as fallback.`);
+      // Finding 2: Clear stale keys before assigning so phantom/chaplygin/etc properties don't linger.
+      Object.keys(eosParams).forEach(k => delete eosParams[k]);
       Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);
     }
 
-    eosModel = newModel;
+    // Finding 5: Set to the actual running model name (barotropic when newModel was unknown),
+    // so downstream code never sees an invalid value. This prevents triple-warn + empty DOM.
+    eosModel = state.EOS_DEFAULTS[newModel] ? newModel : 'barotropic';
     calibrated = false;
     ui.updateEosParamsUI();
     if (simRunning) ui.resetSim();
