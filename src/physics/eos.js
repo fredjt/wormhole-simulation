@@ -10,6 +10,4 @@ function computeSigmaFromEOS(a, a0, sigma0, model, params) {
 
 // NOTE: M_val, A_val (beta), r0_val (mu), and all other shared globals are declared
 // in src/simulation/state.js.  This module only exports computeSigmaFromEOS.
-export { };
-
 export { computeSigmaFromEOS };

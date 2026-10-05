@@ -12,6 +12,8 @@ export let eosModel = 'phantom';
 // Phantom defaults: Ap calibrated at equilibrium; n=5 matches literature convention [46].
 // Barotropic model default (omega: -0.3) — having it here prevents undefined physics
 // calls when barotropic is selected outside the normal UI init flow.
+// NOTE: eosParams persists across initSim() calls; it is updated by readParams()
+//       when the user changes model or slider values (not reset on sim start).
 export let eosParams = {Ap: 1, alpha_p: 1, n: 5, omega: -0.3};
 export let calibrated = false;
 export let simRunning = false;
