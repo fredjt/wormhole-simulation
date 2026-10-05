@@ -8,13 +8,22 @@ export let a0_val = 2.5;                         // throat outside horizon for A
 export let delta_a_val = 0.01;
 export let v0_val = -0.1;
 export let speedMultiplier = 1.0;
+// Single source of truth for EOS parameter defaults per arXiv:2610.00131.
+// All three consumers — readParams safeParse fallbacks, updateEosParamsUI
+// initial slider values, and the global eosParams object itself — reference
+// this map so a single edit never diverges display from physics logic.
+export const EOS_DEFAULTS = {
+  barotropic:   { omega: -0.3 },
+  phantom:      { Ap: 1, alpha_p: 1, n: 5 },
+  chaplygin:    { Ac: 2, alpha_c: 0.5 },
+  cosmicChap:   { Agc: 2, n_gc: 3 },
+  modCosmicChap:{ Amcc: 2, m_mcc: 3 }
+};
 export let eosModel = 'phantom';
-// Phantom defaults: Ap calibrated at equilibrium; n=5 matches literature convention [46].
-// Barotropic model default (omega: -0.3) — having it here prevents undefined physics
-// calls when barotropic is selected outside the normal UI init flow.
 // NOTE: eosParams persists across initSim() calls; it is updated by readParams()
 //       when the user changes model or slider values (not reset on sim start).
-export let eosParams = {Ap: 1, alpha_p: 1, n: 5, omega: -0.3};
+let _defaults = EOS_DEFAULTS['phantom'];  // initial defaults for phantom
+export let eosParams = { ..._defaults };
 export let calibrated = false;
 export let simRunning = false;
 export let simPaused = false;

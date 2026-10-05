@@ -1,3 +1,9 @@
+/** @module calibration — UI parameter reading and EOS model selector helpers. */
+
+// Single source of truth for EOS defaults (see state.js). Needed by both readParams safeParse fallbacks
+// and updateEosParamsUI slider initialization so a single constant map drives display + physics logic.
+import * as state from '../simulation/state.js';
+
 function readParams(){
   const g=id=>document.getElementById(id);
 
@@ -19,28 +25,27 @@ function readParams(){
   };
 
   // Default values per EOS model. These are used as safe-parse fallbacks when
-  // DOM elements are unavailable (unit tests, rapid switching) and also feed the
-  // initial displayValue in makeEosRow so that freshly-created sliders render with
-  // paper-consistent numbers on first load.
+  // DOM elements are unavailable (unit tests, rapid switching). All default constants
+  // come from the single source of truth in state.js to avoid duplication.
+  const defaults = state.EOS_DEFAULTS[eosModel];
   switch(eosModel){
-    case 'barotropic': eosParams.omega = safeParse('sliderOmega', -0.3); break;
-    // phantom: Ap is calibrated at equilibrium; n=5 matches literature convention [46]
+    case 'barotropic': eosParams.omega = safeParse('sliderOmega', defaults?.omega ?? -0.3); break;
     case 'phantom':
-      eosParams.Ap     = safeParse('sliderAp', 1);
-      eosParams.alpha_p = safeParse('sliderAlphaP', 1);
-      eosParams.n       = safeParse('sliderN', 5); break;
-    // chaplygin: alpha_c=0.5 matches the value used in computeSigmaFromEOS
+      eosParams.Ap     = safeParse('sliderAp', defaults?.Ap ?? 1);
+      eosParams.alpha_p = safeParse('sliderAlphaP', defaults?.alpha_p ?? 1);
+      eosParams.n       = safeParse('sliderN', defaults?.n ?? 5); break;
     case 'chaplygin':
-      eosParams.Ac     = safeParse('sliderAc', 2);
-      eosParams.alpha_c = safeParse('sliderAlphaC', 0.5); break;
-    // cosmicChap (GCCG): gamma=n_gc=3 is a mid-range exponent from Fig 6; B_G calibrated at equilibrium
+      eosParams.Ac     = safeParse('sliderAc', defaults?.Ac ?? 2);
+      eosParams.alpha_c = safeParse('sliderAlphaC', defaults?.alpha_c ?? 0.5); break;
     case 'cosmicChap':
-      eosParams.Agc   = safeParse('sliderAgc', 2);
-      eosParams.n_gc  = safeParse('sliderNgc', 3); break;
-    // modCosmicChap: Amcc=A_M=2 per Eq (59) of the paper; m_mcc defaults to 1
+      eosParams.Agc   = safeParse('sliderAgc', defaults?.Agc ?? 2);
+      eosParams.n_gc  = safeParse('sliderNgc', defaults?.n_gc ?? 3); break;
     case 'modCosmicChap':
-      eosParams.Amcc   = safeParse('sliderAmcc', 2);
-      eosParams.m_mcc  = safeParse('sliderMmcc', 3); break;
+      eosParams.Amcc   = safeParse('sliderAmcc', defaults?.Amcc ?? 2);
+      eosParams.m_mcc  = safeParse('sliderMmcc', defaults?.m_mcc ?? 3); break;
+    default:
+      console.warn(`Unknown eosModel "${eosModel}" in readParams — using barotropic as fallback.`);
+      Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);
   }
   if(g('valM'))g('valM').textContent=M_val.toFixed(2);
   if(g('valA'))g('valA').textContent=A_val.toFixed(2);
@@ -66,12 +71,14 @@ function updateEosParamsUI(){
   // from a previously-calibrated (different) model. See PR discussion on fluid-model
   // selector: when simRunning && user changes EOS, updateEosParamsUI() → resetSim()
   // reads back slider DOM; sliders must already hold correct defaults.
-  switch(eosModel){
-    case 'barotropic':   eosParams.omega = -0.3;       break;
-    case 'phantom':      eosParams.Ap=1, eosParams.alpha_p=1, eosParams.n=5;   break;
-    case 'chaplygin':    eosParams.Ac=2, eosParams.alpha_c=0.5;                break;
-    case 'cosmicChap':   eosParams.Agc=2, eosParams.n_gc=3;                    break;
-    case 'modCosmicChap':eosParams.Amcc=2, eosParams.m_mcc=3;                  break;
+  const uDefaults = state.EOS_DEFAULTS[eosModel];
+  if (uDefaults) {
+    eosParams = {};                       // clear stale properties from previous model (Finding 1)
+    Object.assign(eosParams, uDefaults);   // write new defaults atomically
+  } else {
+    console.warn(`Unknown eosModel "${eosModel}" in updateEosParamsUI — using barotropic as fallback.`);
+    eosParams = {};                       // clear stale properties even on unknown model
+    Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);
   }
 
   const container=document.getElementById('eosParams');
@@ -93,6 +100,8 @@ function updateEosParamsUI(){
     case 'modCosmicChap':
       html += makeEosRow('A<sub>mcc</sub>', 'sliderAmcc', '0.1', '10', '0.1', eosParams.Amcc.toFixed(2)) +
               makeEosRow('m<sub>mcc</sub>', 'sliderMmcc', '1', '5', '0.1', eosParams.m_mcc.toFixed(2)); break;
+    default:
+      console.warn(`Unknown eosModel "${eosModel}" in updateEosParamsUI — rendering empty slider container.`);
   }
   container.innerHTML=html;
   const rangeInputs = container.querySelectorAll('input[type="range"]');
