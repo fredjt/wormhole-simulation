@@ -60,6 +60,20 @@ function makeEosRow(labelHtml, inputId, minVal, maxVal, stepVal, displayValue){
 }
 
 function updateEosParamsUI(){
+  // Reset all EOS parameters to paper-consistent defaults before creating sliders.
+  // This ensures newly-created slider elements display sensible starting points for
+  // the selected model type, regardless of what stale values happen to be in eosParams
+  // from a previously-calibrated (different) model. See PR discussion on fluid-model
+  // selector: when simRunning && user changes EOS, updateEosParamsUI() → resetSim()
+  // reads back slider DOM; sliders must already hold correct defaults.
+  switch(eosModel){
+    case 'barotropic':   eosParams.omega = -0.3;       break;
+    case 'phantom':      eosParams.Ap=1, eosParams.alpha_p=1, eosParams.n=5;   break;
+    case 'chaplygin':    eosParams.Ac=2, eosParams.alpha_c=0.5;                break;
+    case 'cosmicChap':   eosParams.Agc=2, eosParams.n_gc=3;                    break;
+    case 'modCosmicChap':eosParams.Amcc=2, eosParams.m_mcc=3;                  break;
+  }
+
   const container=document.getElementById('eosParams');
   let html='';
 
