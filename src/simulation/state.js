@@ -44,6 +44,10 @@ export let timeHistory = [];
 export let phaseHistory = [];
 const maxHistory = 2000;
 
+// ⚠️ DO NOT modify this version without updating the copy in calibration.js —
+// both must stay in sync. If a new parameter or state field is added here,
+// ensure it's also handled in `ui/calibration.js:initSim()` (which has extra
+// setup: readParams() call, warn counter reset, FP grid init for barotropic).
 function initSim(){
   const f_a0=lapseF(a0_val,M_val,A_val,r0_val);
   if(f_a0<=0)return;
