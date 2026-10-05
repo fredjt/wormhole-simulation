@@ -9,8 +9,10 @@ export let delta_a_val = 0.01;
 export let v0_val = -0.1;
 export let speedMultiplier = 1.0;
 export let eosModel = 'phantom';
-// Phantom defaults: Ap calibrated at equilibrium; n=5 is a typical exponent from the literature.
-export let eosParams = {Ap: 1, alpha_p: 1, n: 5};
+// Phantom defaults: Ap calibrated at equilibrium; n=5 matches literature convention [46].
+// Barotropic model default (omega: -0.3) — having it here prevents undefined physics
+// calls when barotropic is selected outside the normal UI init flow.
+export let eosParams = {Ap: 1, alpha_p: 1, n: 5, omega: -0.3};
 export let calibrated = false;
 export let simRunning = false;
 export let simPaused = false;
@@ -33,7 +35,9 @@ function initSim(){
   a_current=a0_val*(1+deltaAPct/100);
   timeHistory=[{tau:0,a:a_current,v:v_current}];
   phaseHistory=[{a:a_current,v:v_current}];
-  calibrated=true;
+  // NOTE: calibrated stays false until calibrateAtA0() is called.
+  // The Play button guards against running un-calibrated sims by calling
+  // calibrateAtA0() first on the initial click (see main.js line 53).
 }
 
 export { initSim };
