@@ -43,23 +43,24 @@ function init() {
   document.getElementById('eosSelect').addEventListener('change', () => {
     const newModel = document.getElementById('eosSelect').value;
 
-    if (state.EOS_DEFAULTS[newModel]) {
-      // Known valid model — clear stale keys and assign its defaults.
-      Object.keys(eosParams).forEach(k => delete eosParams[k]);
-      Object.assign(eosParams, state.EOS_DEFAULTS[newModel]);
-    } else {
+    // Determine the actual model — if unknown, fall back to barotropic.
+    const actualModel = state.EOS_DEFAULTS[newModel] ? newModel : 'barotropic';
+
+    if (newModel !== actualModel) {
       console.warn(`Unknown EOS model "${newModel}" — using barotropic as fallback.`);
-      // Finding 2: Clear stale keys before assigning so phantom/chaplygin/etc properties don't linger.
-      Object.keys(eosParams).forEach(k => delete eosParams[k]);
-      Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);
     }
 
-    // Finding 5: Set to the actual running model name (barotropic when newModel was unknown),
-    // so downstream code never sees an invalid value. This prevents triple-warn + empty DOM.
-    eosModel = state.EOS_DEFAULTS[newModel] ? newModel : 'barotropic';
+    // Set global eosModel FIRST, before any downstream function reads it.
+    // updateEosParamsUI() and resetSim() both read state.eosModel to select defaults;
+    // setting this after would cause them to use stale values from the OLD model.
+    eosModel = actualModel;
+
+    Object.keys(eosParams).forEach(k => delete eosParams[k]);  // clear stale keys from previous model
+    Object.assign(eosParams, state.EOS_DEFAULTS[actualModel]);   // assign new defaults for correct model
+
     calibrated = false;
-    ui.updateEosParamsUI();
-    if (simRunning) ui.resetSim();
+    ui.updateEosParamsUI();         // reads EOS_DEFAULTS[eosModel] → now correct ✅
+    if (simRunning) ui.resetSim();  // readParams/initSim with clean params for actualModel ✅
   });
 
   
