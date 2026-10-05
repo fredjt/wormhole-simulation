@@ -82,10 +82,15 @@ function updateEosParamsUI(){
     const syncToSlider = () => {
       numInput.value = Math.round(parseFloat(numInput.value)*100)/100;
       const slider = document.getElementById(sliderId);
-      if (slider) { 
+      if (slider) {
         // Update slider FIRST so readParams captures current values from DOM
-        slider.value = numInput.value; 
+        slider.value = numInput.value;
         scheduleReadParams();
+        // When simulation is running, reset fully instead of just marking grid dirty.
+        // This ensures all parameters are applied atomically — avoiding a race where two
+        // rapid number-input changes could cause the next grid rebuild to use stale globals
+        // (e.g., new ω but old A). Sliders already do this via `resetSim()`.  See PR #10.
+        if (simRunning) resetSim();
       }
     };
 
@@ -97,10 +102,10 @@ function updateEosParamsUI(){
         syncToSlider();
       }
     });
-    
+
     // Spin buttons - mirror static slider behavior with debouncing
     const step = parseFloat(numInput.step || '0.01');
-    
+
     [wrapper.querySelector('.spin-button-up'), wrapper.querySelector('.spin-button-down')].forEach((btn, idx) => {
       btn.addEventListener('click', () => {
         let val = parseFloat(numInput.value);
@@ -116,8 +121,8 @@ function updateEosParamsUI(){
     // Keyboard support for spin buttons (Enter/Space) and arrow keys in number input
     [wrapper.querySelector('.spin-button-up'), wrapper.querySelector('.spin-button-down')].forEach((btn, idx) => {
       btn.addEventListener('keydown', (e) => {
-        if ((e.key === 'Enter' || e.key === ' ') && numInput !== document.activeElement) { 
-          // Only handle on spin buttons when they have focus, not number input  
+        if ((e.key === 'Enter' || e.key === ' ') && numInput !== document.activeElement) {
+          // Only handle on spin buttons when they have focus, not number input
           e.preventDefault();
           let val = parseFloat(numInput.value);
           if (!isNaN(val)) {
@@ -138,9 +143,9 @@ function updateEosParamsUI(){
     // Blur validation - restore slider value or clamp on invalid input
     numInput.addEventListener('blur', () => {
       let val = parseFloat(numInput.value);
-      if (isNaN(val)) { 
+      if (isNaN(val)) {
         const slider = document.getElementById(sliderId);
-        if (slider) numInput.value = Math.round(parseFloat(slider.value)*100)/100; 
+        if (slider) numInput.value = Math.round(parseFloat(slider.value)*100)/100;
       } else {
         val = Math.max(parseFloat(numInput.min), Math.min(parseFloat(numInput.max), val));
         numInput.value = Math.round(val * 100) / 100;
@@ -165,9 +170,43 @@ function updateHorizonInfo(){
 
 function calibrateAtA0(){const f_a0=lapseF(a0_val,M_val,A_val,r0_val);if(f_a0<=0)return;switch(eosModel){case'barotropic':eosParams.omega=calibrateOmega(a0_val,M_val,A_val,r0_val);break;case'phantom':eosParams.Ap=calibratePhantomParams(a0_val,M_val,A_val,r0_val,eosParams);break;case'chaplygin':eosParams.Ac=calibrateChaplyginParams(a0_val,M_val,A_val,r0_val);break;case'cosmicChap':eosParams.Agc=calibrateCosmicChap(a0_val,M_val,A_val,r0_val);break;case'modCosmicChap':eosParams.Amcc=calibrateModCosmicChap(a0_val,M_val,A_val,r0_val);break;}calibrated=true;updateEosParamsUI();resetSim();}
 
-function initSim(){readParams();const f_a0=lapseF(a0_val,M_val,A_val,r0_val);if(f_a0<=0)return;let deltaAPct=parseFloat(document.getElementById('sliderDeltaA')?.value || '0.01');if(document.getElementById('chkSmallPerturb').checked)deltaAPct=0.01;v_current=parseFloat(document.getElementById('sliderV0')?.value || '-0.1');tau=0;a_current=a0_val*(1+deltaAPct/100);timeHistory=[{tau:0,a:a_current,v:v_current}];phaseHistory=[{a:a_current,v:v_current}];calibrated=true;}
+/** Initialize the simulation state with current parameters.
+ * Called on every parameter change (via resetSim) and at startup. */
+function initSim() {
+  readParams();
 
-function resetSim(){simRunning=false;simPaused=false;readParams();initSim();}
+  // Reset rate-limit counters so out-of-bounds warnings are visible in new sessions.
+  resetWarnCounters();
+
+  // Pre-compute F'(r) grid only for barotropic EOS (used in RK4 integration).
+  if (eosModel === 'barotropic') {
+    initFPGrid(M_val, A_val, r0_val);
+  }
+
+  var f_a0 = lapseF(a0_val, M_val, A_val, r0_val);
+  if (f_a0 <= 0) return;
+
+  // Read perturbation and initial velocity from UI.
+  var deltaAPct = parseFloat(document.getElementById('sliderDeltaA')?.value || '0.01');
+  if (document.getElementById('chkSmallPerturb').checked) {
+    deltaAPct = 0.01;
+  }
+
+  v_current = parseFloat(document.getElementById('sliderV0')?.value || '-0.1');
+  tau = 0;
+  a_current = a0_val * (1 + deltaAPct / 100);
+  timeHistory = [{tau: 0, a: a_current, v: v_current}];
+  phaseHistory = [{a: a_current, v: v_current}];
+  calibrated = true;
+}
+
+/** Reset the simulation — stops any running sim and re-initialises from current UI params. */
+function resetSim() {
+  simRunning = false;
+  simPaused = false;
+  readParams();
+  initSim();
+}
 
 let lastTime=0;
 

@@ -1,11 +1,38 @@
+// Optimized integrator: uses precomputed F'(r) grid for barotropic EOS via 
+// effPotPrimeBarotropicFast() during RK4 steps — zero hypergeom calls.
 let lastTime = 0;
 
 function rk4Step(dt) {
   if(!calibrated)return;
-  const f_a0=lapseF(a0_val,M_val,A_val,r0_val);
-  if(f_a0<=0)return;
-  const sigma0=-Math.sqrt(f_a0)/(2*Math.PI*a0_val);
-  function deriv(state){const[a,v]=state;if(a<=0)return[0,0];const Vp=effPotPrime(a,a0_val,sigma0,eosModel,eosParams);return[v,-Vp/2];}
+
+  const _a = a0_val, Mv = M_val, Av = A_val, r0v = r0_val;
+  const f_a0=lapseF(_a,Mv,Av,r0v);
+
+  // Stop sim on invalid lapse — log params so user can debug edge cases.
+  if(!isFinite(f_a0)||f_a0<=0){
+    console.warn('rk4Step: lapseF(a₀='+_a+')=' + f_a0 + ' (M='+Mv+', A='+Av+
+      ', r₀='+r0v+') — stopping sim');
+    simRunning = false;
+    return;
+  }
+
+  // Pre-compute sigma₀ once — exact analytical value from EOS at equilibrium.
+  const _sigma0=-Math.sqrt(f_a0)/(2*Math.PI*a0_val);
+
+  function deriv(state){const[a,v]=state;if(a<=0)return[0,0];
+    let Vp;
+    if(eosModel==='barotropic')Vp=effPotPrimeBarotropicFast(a,a0_val,_sigma0,eosParams.omega||0,M_val,A_val,r0_val);
+    else {
+      // Guard against unknown EOS model — effPotPrime will fall back to numerical
+      // differentiation but may produce wrong results silently for unrecognized models.
+      var knownModels = ['barotropic','phantom','chaplygin','cosmicChap','modCosmicChap'];
+      if (!knownModels.includes(eosModel)) {
+        console.warn('RK4: unknown eosModel="'+eosModel+'" — using generic numerical derivative');
+      }
+      Vp=effPotPrime(a,a0_val,_sigma0,eosModel,eosParams);
+    }
+    return[v,-Vp/2];}
+
   const s=[a_current,v_current];
   const k1=deriv(s),s2=[s[0]+k1[0]*dt/2,s[1]+k1[1]*dt/2],k2=deriv(s2);
   const s3=[s[0]+k2[0]*dt/2,s[1]+k2[1]*dt/2],k3=deriv(s3);

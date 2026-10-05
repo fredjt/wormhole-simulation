@@ -26,3 +26,6 @@ config/
 .local/
 .config/
 .unsloth_attachments/
+
+# Tool caches
+.cache/
