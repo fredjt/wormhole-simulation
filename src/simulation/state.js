@@ -1,15 +1,22 @@
 // Simulation parameters (exposed as globals for cross-module access)
-export let M_val = 1.0, A_val = 0.3, r0_val = 0.5;
-export let a0_val = 7.0, delta_a_val = 0.01, v0_val = -0.1;
+// Defaults follow arXiv:2610.00131 convention: M=1 geometric units,
+// A=β=0.3 default curve strength, r₀/M=0.2 regularization scale.
+export let M_val = 1.0;
+export let A_val = 0.3;                          // β (string-cloud) from all paper figures
+export let r0_val = 0.2;                        // μ regularizer: r₀/M = 0.2, Table I
+export let a0_val = 2.5;                         // throat outside horizon for A=0.3 (r₊≈1.27)
+export let delta_a_val = 0.01;
+export let v0_val = -0.1;
 export let speedMultiplier = 1.0;
 export let eosModel = 'phantom';
-export let eosParams = {Ap: 0.547259, alpha_p: 1, n: 5};
-export let calibrated = true;
+// Phantom defaults: Ap calibrated at equilibrium; n=5 is a typical exponent from the literature.
+export let eosParams = {Ap: 1, alpha_p: 1, n: 5};
+export let calibrated = false;
 export let simRunning = false;
 export let simPaused = false;
 export let autoStop = true;
 
-// Current simulation state
+// Current simulation state (overwritten by initSim on each start)
 export let a_current = 2.5, v_current = -0.1;
 export let tau = 0;
 export let timeHistory = [];

@@ -15,15 +15,15 @@
 <div id="controls">
   <h2>Seed Metric</h2>
   <div class="control-group">
-    <div class="slider-row"><label>M (mass) <span class="val" id="valM" title="Current mass value.">1.00</span></label><input type="range" id="sliderM" title="Mass of the black hole seed (M). Larger mass = stronger gravity." min="0.3" max="5.0" step="0.01" value="0.1"></div>
+    <div class="slider-row"><label>M (mass) <span class="val" id="valM" title="Current mass value.">1.00</span></label><input type="range" id="sliderM" title="Mass of the black hole seed (M). Larger mass = stronger gravity." min="0.3" max="5.0" step="0.01" value="1"></div>
     <div class="slider-row"><label>&beta; (string cloud) <span class="val" id="valA" title="Current string cloud strength.">0.30</span></label><input type="range" id="sliderA" title="String cloud parameter (β/A). Controls matter density around the throat." min="0.0" max="1.0" step="0.01" value="0.3"></div>
-    <div class="slider-row"><label>&mu; (regulator) <span class="val" id="valR0" title="Current regulator scale.">0.50</span></label><input type="range" id="sliderR0" title="Regulator scale (μ/r₀). Smears out the singularity to avoid infinities." min="0.01" max="2.0" step="0.01" value="0.5"></div>
+    <div class="slider-row"><label>&mu; (regulator) <span class="val" id="valR0" title="Current regulator scale.">0.20</span></label><input type="range" id="sliderR0" title="Regulator scale (μ/r₀). Smears out the singularity to avoid infinities." min="0.01" max="2.0" step="0.01" value="0.2"></div>
     <div class="info-text" id="horizonInfo" title="Location of the outer event horizon. Throat must be placed outside this.">Horizon r<sub>+</sub>: &mdash;</div>
   </div>
 
   <h2>Throat Placement</h2>
   <div class="control-group">
-    <div class="slider-row"><label>a<sub>0</sub> (throat radius) <span class="val" id="valA0" title="Current throat radius.">1.50</span></label><input type="range" id="sliderA0" title="Throat radius (a₀). Where the wormhole is narrowest. Must be > horizon radius." min="0.5" max="5.0" step="0.01" value="1.5"></div>
+    <div class="slider-row"><label>a<sub>0</sub> (throat radius) <span class="val" id="valA0" title="Current throat radius.">2.50</span></label><input type="range" id="sliderA0" title="Throat radius (a₀). Where the wormhole is narrowest. Must be > horizon radius." min="1.35" max="5.0" step="0.01" value="2.5"></div>
     <div class="warning" id="horizonWarn" title="Warning: Your throat placement is inside or at the horizon!">⚠ Throat must be outside the horizon.</div>
   </div>
 

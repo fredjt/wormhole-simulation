@@ -1,9 +1,12 @@
 function readParams(){
   const g=id=>document.getElementById(id);
-  M_val=parseFloat(g('sliderM')?.value||'1.0');
-  A_val=parseFloat(g('sliderA')?.value||'0.3');
-  r0_val=parseFloat(g('sliderR0')?.value||'0.5');
-  a0_val=parseFloat(g('sliderA0')?.value||'1.8');
+
+  // Safe-parse fallbacks match paper defaults: M=1, A=β=0.3,
+  // r₀/M = 0.2 → r₀=0.2; throat outside horizon (r₊≈1.27 for A=0.3) → a₀≈2.5.
+  M_val   = parseFloat(g('sliderM')?.value || '1');
+  A_val   = parseFloat(g('sliderA')?.value || '0.3');
+  r0_val  = parseFloat(g('sliderR0')?.value || '0.2');
+  a0_val  = parseFloat(g('sliderA0')?.value || '2.5');
   eosModel=g('eosSelect').value;
   speedMultiplier=parseFloat(g('sliderSpeed')?.value||'1.0');
   autoStop=g('chkAutoStop')?.checked||false;
@@ -15,12 +18,29 @@ function readParams(){
     return parseFloat(el.value);
   };
 
+  // Default values per EOS model. These are used as safe-parse fallbacks when
+  // DOM elements are unavailable (unit tests, rapid switching) and also feed the
+  // initial displayValue in makeEosRow so that freshly-created sliders render with
+  // paper-consistent numbers on first load.
   switch(eosModel){
-    case'barotropic':eosParams.omega=safeParse('sliderOmega',-0.58); break;
-    case'phantom': eosParams.Ap=safeParse('sliderAp',1); eosParams.alpha_p=safeParse('sliderAlphaP',1); eosParams.n=safeParse('sliderN',5); break;
-    case'chaplygin':eosParams.Ac=safeParse('sliderAc',2); eosParams.alpha_c=safeParse('sliderAlphaC',1); break;
-    case'cosmicChap':eosParams.Agc=safeParse('sliderAgc',2); eosParams.n_gc=safeParse('sliderNgc',3); break;
-    case'modCosmicChap':eosParams.Amcc=safeParse('sliderAmcc',2); eosParams.m_mcc=safeParse('sliderMmcc',3); break;
+    case 'barotropic': eosParams.omega = safeParse('sliderOmega', -0.3); break;
+    // phantom: Ap is calibrated at equilibrium; n=5 matches literature convention [46]
+    case 'phantom':
+      eosParams.Ap     = safeParse('sliderAp', 1);
+      eosParams.alpha_p = safeParse('sliderAlphaP', 1);
+      eosParams.n       = safeParse('sliderN', 5); break;
+    // chaplygin: alpha_c=0.5 matches the value used in computeSigmaFromEOS
+    case 'chaplygin':
+      eosParams.Ac     = safeParse('sliderAc', 2);
+      eosParams.alpha_c = safeParse('sliderAlphaC', 0.5); break;
+    // cosmicChap (GCCG): gamma=n_gc=3 is a mid-range exponent from Fig 6; B_G calibrated at equilibrium
+    case 'cosmicChap':
+      eosParams.Agc   = safeParse('sliderAgc', 2);
+      eosParams.n_gc  = safeParse('sliderNgc', 3); break;
+    // modCosmicChap: Amcc=A_M=2 per Eq (59) of the paper; m_mcc defaults to 1
+    case 'modCosmicChap':
+      eosParams.Amcc   = safeParse('sliderAmcc', 2);
+      eosParams.m_mcc  = safeParse('sliderMmcc', 3); break;
   }
   if(g('valM'))g('valM').textContent=M_val.toFixed(2);
   if(g('valA'))g('valA').textContent=A_val.toFixed(2);
@@ -43,25 +63,34 @@ function updateEosParamsUI(){
   const container=document.getElementById('eosParams');
   let html='';
 
-  // Ensure all EOS parameter defaults exist before rendering (prevents undefined errors on model switch)
-  if(eosModel==='barotropic') eosParams.omega=eosParams.omega??-0.58;
+  // Ensure all EOS parameter defaults exist before rendering (prevents undefined errors on model switch).
+  // Defaults mirror the safeParse fallbacks above for consistency.
+  if(eosModel==='barotropic') eosParams.omega=eosParams.omega??-0.3;
   else if(eosModel==='phantom'){eosParams.Ap=eosParams.Ap??1;eosParams.alpha_p=eosParams.alpha_p??1;eosParams.n=eosParams.n??5;}
-  else if(eosModel==='chaplygin'){eosParams.Ac=eosParams.Ac??2; eosParams.alpha_c=eosParams.alpha_c??1;}
+  else if(eosModel==='chaplygin'){eosParams.Ac=eosParams.Ac??2; eosParams.alpha_c=eosParams.alpha_c??0.5;}
   else if(eosModel==='cosmicChap'){eosParams.Agc=eosParams.Agc??2;eosParams.n_gc=eosParams.n_gc??3;}
   else if(eosModel==='modCosmicChap'){eosParams.Amcc=eosParams.Amcc??2;eosParams.m_mcc=eosParams.m_mcc??3;}
 
+  // Display values for freshly-created sliders mirror the safeParse defaults above.
   switch(eosModel){
-    case'barotropic':html+=makeEosRow('&omega;','sliderOmega','-1.5','0','0.01',eosParams.omega.toFixed(2));break;
-    case'phantom':
-      html+=makeEosRow('A<sub>p</sub>','sliderAp','0','5','0.1',eosParams.Ap.toFixed(2))+
-            makeEosRow('&alpha;<sub>p</sub>','sliderAlphaP','0','3','0.1',eosParams.alpha_p.toFixed(2))+
-            makeEosRow('n','sliderN','1','10','0.5',eosParams.n.toFixed(1));break;
-    case'chaplygin':html+=makeEosRow('A<sub>c</sub>','sliderAc','0.1','10','0.1',eosParams.Ac.toFixed(2))+
-                       makeEosRow('&alpha;<sub>c</sub>','sliderAlphaC','0.1','3','0.1',eosParams.alpha_c.toFixed(2));break;
-    case'cosmicChap':html+=makeEosRow('A<sub>gc</sub>','sliderAgc','0.1','10','0.1',eosParams.Agc.toFixed(2))+
-                           makeEosRow('n<sub>gc</sub>','sliderNgc','1','5','0.1',eosParams.n_gc.toFixed(2));break;
-    case'modCosmicChap':html+=makeEosRow('A<sub>mcc</sub>','sliderAmcc','0.1','10','0.1',eosParams.Amcc.toFixed(2))+
-                              makeEosRow('m<sub>mcc</sub>','sliderMmcc','1','5','0.1',eosParams.m_mcc.toFixed(2));break;
+    case 'barotropic': html += makeEosRow('&omega;', 'sliderOmega', '-1.5', '0', '0.01', eosParams.omega.toFixed(2)); break;
+    // phantom: Ap=1 is a sensible starting point before calibration
+    case 'phantom':
+      html += makeEosRow('A<sub>p</sub>', 'sliderAp', '0', '5', '0.1', (eosParams.Ap ?? 1).toFixed(2)) +
+             makeEosRow('&alpha;<sub>p</sub>', 'sliderAlphaP', '0', '3', '0.1', eosParams.alpha_p.toFixed(2)) +
+             makeEosRow('n', 'sliderN', '1', '10', '0.5', (eosParams.n ?? 5).toFixed(1)); break;
+    // chaplygin: alpha_c=0.5 matches computeSigmaFromEOS default
+    case 'chaplygin':
+      html += makeEosRow('A<sub>c</sub>', 'sliderAc', '0.1', '10', '0.1', eosParams.Ac.toFixed(2)) +
+              makeEosRow('&alpha;<sub>c</sub>', 'sliderAlphaC', '0.1', '3', '0.1', (eosParams.alpha_c ?? 0.5).toFixed(2)); break;
+    // cosmicChap: n_gc=3 is a mid-range exponent from Fig 6
+    case 'cosmicChap':
+      html += makeEosRow('A<sub>gc</sub>', 'sliderAgc', '0.1', '10', '0.1', eosParams.Agc.toFixed(2)) +
+              makeEosRow('n<sub>gc</sub>', 'sliderNgc', '1', '5', '0.1', (eosParams.n_gc ?? 3).toFixed(2)); break;
+    // modCosmicChap: Amcc=A_M=2 per Eq (59) of the paper
+    case 'modCosmicChap':
+      html += makeEosRow('A<sub>mcc</sub>', 'sliderAmcc', '0.1', '10', '0.1', eosParams.Amcc.toFixed(2)) +
+              makeEosRow('m<sub>mcc</sub>', 'sliderMmcc', '1', '5', '0.1', (eosParams.m_mcc ?? 3).toFixed(2)); break;
   }
   container.innerHTML=html;
 
