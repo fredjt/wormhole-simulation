@@ -22,7 +22,15 @@ function rk4Step(dt) {
   function deriv(state){const[a,v]=state;if(a<=0)return[0,0];
     let Vp;
     if(eosModel==='barotropic')Vp=effPotPrimeBarotropicFast(a,a0_val,_sigma0,eosParams.omega||0,M_val,A_val,r0_val);
-    else Vp=effPotPrime(a,a0_val,_sigma0,eosModel,eosParams);
+    else {
+      // Guard against unknown EOS model — effPotPrime will fall back to numerical
+      // differentiation but may produce wrong results silently for unrecognized models.
+      var knownModels = ['barotropic','phantom','chaplygin','cosmicChap','modCosmicChap'];
+      if (!knownModels.includes(eosModel)) {
+        console.warn('RK4: unknown eosModel="'+eosModel+'" — using generic numerical derivative');
+      }
+      Vp=effPotPrime(a,a0_val,_sigma0,eosModel,eosParams);
+    }
     return[v,-Vp/2];}
 
   const s=[a_current,v_current];
