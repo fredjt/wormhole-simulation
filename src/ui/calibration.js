@@ -1,10 +1,7 @@
 /** @module calibration — UI parameter reading and EOS model selector helpers. */
 
-// Explicit list of all known EOS parameter keys, used for stale-key cleanup in both
-// readParams() and updateEosParamsUI(). Kept here (not imported from state.js) to avoid
-// circular dependencies while ensuring a single source of truth.
-const ALL_EOS_KEYS = ['omega', 'Ap', 'alpha_p', 'n', 'Ac', 'alpha_c',
-  'Agc', 'n_gc', 'Amcc', 'm_mcc'];
+// Re-export ALL_EOS_KEYS from state.js so stale-key cleanup loops use the canonical list.
+export { ALL_EOS_KEYS } from '../simulation/state.js';
 
 // Single source of truth for EOS defaults (see state.js). Needed by both readParams safeParse fallbacks
 // and updateEosParamsUI slider initialization so a single constant map drives display + physics logic.
@@ -225,19 +222,23 @@ function calibrateAtA0() {
 
   calibrated = true; updateEosParamsUI(); resetSim();
 }
-/** UI-specific setup: read fresh DOM values and run extra initialization. */
+/** UI-specific setup: read fresh DOM values and run extra initialization.
+ * Note: warn counter resets were moved to updateHorizonInfo for lazy evaluation
+ * — they only fire when a warning has actually been triggered. */
 function uiInitSim() {
   readParams();
-  // resetWarnCounters is called only when warnings are actually cleared
-  // (see updateHorizonInfo), not unconditionally on every init.
   if (eosModel === 'barotropic') { initFPGrid(M_val, A_val, r0_val); }
 }
 
 /** Initialize the simulation state with current parameters.
- * Calls uiInitSim() to read fresh DOM values and run extra setup (resetWarnCounters, FP grid),
+ * Calls uiInitSim() to read fresh DOM values and run extra setup (conditional FP grid init),
  * then delegates to state.initSim({skipReadParams: true}) which reads slider values directly
- * from DOM for test-safety. The skipReadParams flag avoids redundant calls since uiInitSim()
- * already invoked window.readParams(). */
+ * from DOM for availability in headless/non-UI contexts. The skipReadParams flag avoids redundant
+ * calls since uiInitSim() already invoked window.readParams().
+ *
+ * Note: This wrapper always passes {skipReadParams: true} to state.initSim — it never forwards
+ * arguments. main.js is the sole caller and always uses this path; direct callers should use
+ * state.initSkip({skipReadParams}) if they need fine-grained control over DOM reads. */
 function initSim() {
   uiInitSim();
   state.initSim({skipReadParams: true});

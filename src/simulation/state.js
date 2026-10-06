@@ -19,6 +19,11 @@ export const EOS_DEFAULTS = {
   cosmicChap:   { Agc: 2, n_gc: 3 },
   modCosmicChap:{ Amcc: 2, m_mcc: 3 }
 };
+
+// Derive the canonical list of all EOS parameter keys from EOS_DEFAULTS.
+// Exported for use in calibration.js stale-key cleanup loops — guarantees
+// ALL_EOS_KEYS never desynchronizes from the source-of-truth map.
+export const ALL_EOS_KEYS = Object.values(EOS_DEFAULTS).flatMap(Object.keys);
 export let eosModel = 'phantom';
 /** @type {{ [key: string]: number }} — Union of all EOS model defaults at module load.
  * Cleared and repopulated with only the active model's keys by updateEosParamsUI() before first use,
@@ -59,6 +64,9 @@ export function initSim({skipReadParams = false} = {}) {
   if (!skipReadParams) { window.readParams(); }
   const f_a0=lapseF(a0_val,M_val,A_val,r0_val);
   if(f_a0<=0)return;
+    // Optional chaining + nullish coalescing prevent crashes when DOM elements don't exist
+    // (headless environments, initialization ordering). readParams() provides equivalent
+    // fallback defaults; these guards are redundant for correctness but prevent TypeError.
     let deltaAPct=parseFloat(document.getElementById('sliderDeltaA')?.value ?? '0.01');
     // Force 1% perturbation when small-perturb checkbox is checked (user preference).
     if(document.getElementById('chkSmallPerturb')?.checked)deltaAPct=0.01;
