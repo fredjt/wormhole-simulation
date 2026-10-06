@@ -63,7 +63,8 @@ function init() {
   ui.readParams();
   ui.updateHorizonInfo();
   ui.updateEosParamsUI();
-  state.initSim();
+  // readParams already called above (line 63), so skip redundant DOM reads
+  state.initSim({skipReadParams: true});
   requestAnimationFrame(integrator.mainLoop);
 }
 
