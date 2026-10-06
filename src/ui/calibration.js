@@ -86,8 +86,8 @@ for (const k of ALL_EOS_KEYS) delete eosParams[k];
     console.warn(`Unknown eosModel "${eosModel}" in updateEosParamsUI — using barotropic as fallback.`);
     Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);
   } else {
-    const knownKeys = Object.keys(uDefaults);
-for (const k of ALL_EOS_KEYS) delete eosParams[k];
+    // Re-populate eosParams with the current model's defaults now that all keys are cleared.
+    for (const k of Object.keys(uDefaults)) eosParams[k] = uDefaults[k];
   }
   
   // NOTE: Each case has an explicit `break;` to prevent fallthrough into other EOS types' params.
