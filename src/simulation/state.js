@@ -51,14 +51,15 @@ export let timeHistory = [];
 export let phaseHistory = [];
 const maxHistory = 2000;
 
-// ⚠️ DO NOT modify this version without updating the copy in calibration.js —
-// both must stay in sync. If a new parameter or state field is added here,
-// ensure it's also handled in `ui/calibration.js:initSim()` (which has extra
-// setup: readParams() call, warn counter reset, FP grid init for barotropic).
-function initSim(){
+// Initialize the simulation state from current parameters.
+// @param {Object} [opts] — optional configuration
+//   skipReadParams: if true, assume globals are already populated (e.g., by readParams).
+//                    Use false for UI-triggered resets where fresh DOM values must be read first.
+export function initSim({skipReadParams = false} = {}) {
+  // Skip redundant reads during startup when main.js has just called readParams().
+  if (!skipReadParams) { window.readParams(); }
   const f_a0=lapseF(a0_val,M_val,A_val,r0_val);
   if(f_a0<=0)return;
-  // Use optional chaining + defaults for safety in unit tests / non-DOM environments
 let deltaAPct=parseFloat(document.getElementById('sliderDeltaA')?.value ?? '0.01');
 if(document.getElementById('chkSmallPerturb')?.checked)deltaAPct=0.01;
 v_current=parseFloat(document.getElementById('sliderV0')?.value ?? '-0.1');
@@ -70,5 +71,3 @@ v_current=parseFloat(document.getElementById('sliderV0')?.value ?? '-0.1');
   // The Play button guards against running un-calibrated sims by calling
   // calibrateAtA0() first on the initial click (see main.js line 53).
 }
-
-export { initSim };

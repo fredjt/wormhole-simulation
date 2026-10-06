@@ -206,38 +206,26 @@ switch(eosModel){case'barotropic':eosParams.omega=calibrateOmega(a0_val,M_val,A_
   }
 
   calibrated=true;updateEosParamsUI();resetSim();}
-// ⚠️ DO NOT modify this version without updating the copy in state.js —
-// both must stay in sync for shared state variables (tau, deltaAPct,
-// v_current, a_current, timeHistory, phaseHistory). See state.js:initSim().
+/** UI-specific setup: read fresh DOM values and run extra initialization. */
+function uiInitSim() {
+  readParams();
+  resetWarnCounters();
+  if (eosModel === 'barotropic') { initFPGrid(M_val, A_val, r0_val); }
+}
+
 /** Initialize the simulation state with current parameters.
  * Called on every parameter change (via resetSim) and at startup. */
 function initSim() {
-  readParams();
-  resetWarnCounters();
-  if (eosModel === 'barotropic') {
-    initFPGrid(M_val, A_val, r0_val);
-  }
-  var f_a0 = lapseF(a0_val, M_val, A_val, r0_val);
-  if (f_a0 <= 0) return;
-  var deltaAPct = parseFloat(document.getElementById('sliderDeltaA')?.value ?? '0.01');
-  if (document.getElementById('chkSmallPerturb')?.checked) {
-    deltaAPct = 0.01;
-  }
-  v_current = parseFloat(document.getElementById('sliderV0')?.value ?? '-0.1');
-  tau = 0;
-  a_current = a0_val * (1 + deltaAPct / 100);
-  timeHistory = [{tau: 0, a: a_current, v: v_current}];
-  phaseHistory = [{a: a_current, v: v_current}];
-  // NOTE: calibrated stays false until calibrateAtA0() is called.
-  // The Play button guards against running un-calibrated sims by calling
-  // calibrateAtA0() first on the initial click (see main.js line 53).
+  uiInitSim();
+  state.initSim({skipReadParams: true});
 }
 
-/** Reset the simulation — stops any running sim and re-initialises from current UI params. */
+/** Reset the simulation — stops any running sim and re-initialises from current UI params.
+ * Calls initSim() which handles fresh DOM reads + extra setup, then delegates to
+ * state's unified implementation with skipReadParams:true. */
 function resetSim() {
   simRunning = false;
   simPaused = false;
-  readParams();
   initSim();
 }
 let lastTime=0;

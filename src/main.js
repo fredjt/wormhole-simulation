@@ -76,11 +76,11 @@ function init() {
   });
   document.getElementById('btnReset').addEventListener('click', ui.resetSim);
   
-  // Initialize
+  // Initialize — readParams already called above, so skip redundant DOM reads in initSkip.
   ui.readParams();
   ui.updateHorizonInfo();
   ui.updateEosParamsUI();
-  state.initSim();
+  state.initSkip({skipReadParams: true});
   requestAnimationFrame(integrator.mainLoop);
 }
 
