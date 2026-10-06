@@ -49,9 +49,8 @@ function readParams(){
       eosParams.Amcc   = safeParse('sliderAmcc', defaults?.Amcc);
       eosParams.m_mcc  = safeParse('sliderMmcc', defaults?.m_mcc); break;
     default:
-      
       console.error(`Unknown eosModel "${eosModel}" in readParams! Check state.EOS_DEFAULTS for valid keys.`);
-      Object.keys(eosParams).forEach(k => delete eosParams[k]);
+      // Stale-key clearing is handled by updateEosParamsUI() on the UI path; just assign defaults here.
       Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);
   }
   if(g('valM'))g('valM').textContent=M_val.toFixed(2);
@@ -110,7 +109,6 @@ function updateEosParamsUI(){
               makeEosRow('m<sub>mcc</sub>', 'sliderMmcc', '1', '5', '0.1', eosParams.m_mcc.toFixed(2)); break;
     default:
       console.warn(`Unknown eosModel "${eosModel}" — clearing stale sliders to prevent cross-model parameter leakage.`);
-      
       html = '';
   }
   container.innerHTML=html;
@@ -219,11 +217,11 @@ function initSim() {
   }
   var f_a0 = lapseF(a0_val, M_val, A_val, r0_val);
   if (f_a0 <= 0) return;
-  var deltaAPct = parseFloat(document.getElementById('sliderDeltaA')?.value || '0.01');
-  if (document.getElementById('chkSmallPerturb').checked) {
+  var deltaAPct = parseFloat(document.getElementById('sliderDeltaA')?.value ?? '0.01');
+  if (document.getElementById('chkSmallPerturb')?.checked) {
     deltaAPct = 0.01;
   }
-  v_current = parseFloat(document.getElementById('sliderV0')?.value || '-0.1');
+  v_current = parseFloat(document.getElementById('sliderV0')?.value ?? '-0.1');
   tau = 0;
   a_current = a0_val * (1 + deltaAPct / 100);
   timeHistory = [{tau: 0, a: a_current, v: v_current}];

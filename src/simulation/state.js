@@ -20,16 +20,24 @@ export const EOS_DEFAULTS = {
   modCosmicChap:{ Amcc: 2, m_mcc: 3 }
 };
 export let eosModel = 'phantom';
-// NOTE: eosParams persists across initSim() calls; it is updated by readParams()
-//       when the user changes model or slider values (not reset on sim start).
-// Pre-populate with the union of all model defaults so that any key access during early initialization
-// returns a number rather than undefined. This restores the previous defensive posture at zero runtime cost.
+/** @type {{ [key: string]: number }} — Union of all EOS model defaults at module load.
+ * Cleared and repopulated with only the active model's keys by updateEosParamsUI() before first use,
+ * so this pre-population is purely for defensive safety (prevents undefined on early key access). */
 // NOTE: All EOS models must have disjoint parameter keys — if two future models share a name (e.g., both
 // define 'n'), Object.assign silently overwrites earlier values with no warning. Adding new EOS types is now
 // a multi-touch change across state.js, calibration.js (readParams + updateEosParamsUI switches), and main.js.
+// Validate that all EOS models have disjoint parameter keys — catch silent overwrites early.
+let duplicateKeyFound = false;
 const _allDefaults = {};
-for (const md of Object.values(EOS_DEFAULTS)) {
-    Object.assign(_allDefaults, md);
+for (const [modelName, params] of Object.entries(EOS_DEFAULTS)) {
+    for (const key of Object.keys(params)) {
+        if (key in _allDefaults) {
+            console.error(`Duplicate EOS parameter "${key}" — defined in multiple models. ` +
+                `Check state.EOS_DEFAULTS: ${modelName} conflicts with existing model.`);
+            duplicateKeyFound = true;
+        }
+    }
+    Object.assign(_allDefaults, params);
 }
 export let eosParams = { ..._allDefaults };
 export let calibrated = false;
