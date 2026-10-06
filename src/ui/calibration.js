@@ -206,6 +206,9 @@ switch(eosModel){case'barotropic':eosParams.omega=calibrateOmega(a0_val,M_val,A_
   }
 
   calibrated=true;updateEosParamsUI();resetSim();}
+// ⚠️ DO NOT modify this version without updating the copy in state.js —
+// both must stay in sync for shared state variables (tau, deltaAPct,
+// v_current, a_current, timeHistory, phaseHistory). See state.js:initSim().
 /** Initialize the simulation state with current parameters.
  * Called on every parameter change (via resetSim) and at startup. */
 function initSim() {
