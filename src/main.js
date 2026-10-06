@@ -80,7 +80,7 @@ function init() {
   ui.readParams();
   ui.updateHorizonInfo();
   ui.updateEosParamsUI();
-  state.initSkip({skipReadParams: true});
+  state.initSim({skipReadParams: true});
   requestAnimationFrame(integrator.mainLoop);
 }
 
