@@ -71,15 +71,15 @@ function makeEosRow(labelHtml, inputId, minVal, maxVal, stepVal, displayValue){
 }
 
 function updateEosParamsUI(){
-  // Finding 7: Move the early-return guard to before parameter clearing so we bail without side-effects when
-  // called from a test harness, async callback, or any path where DOM isn't yet available. Stale slider elements
-  // are no longer left visible because we never reach innerHTML assignment in that case.
+  // Bail early if the container element doesn't exist (unit tests, headless environments).
+  // This prevents innerHTML assignment on a missing element and avoids leaving stale sliders visible.
   const container = document.getElementById('eosParams');
   if (!container) return;
 
   // Clear all known EOS parameters before assigning new ones — prevents ghost keys when switching models.
-  const allKnownKeys = Object.values(state.EOS_DEFAULTS).flatMap(Object.keys);
-  for (const k of new Set(allKnownKeys)) delete eosParams[k];
+const ALL_EOS_KEYS = ['omega', 'Ap', 'alpha_p', 'n', 'Ac', 'alpha_c',
+'Agc', 'n_gc', 'Amcc', 'm_mcc']; // explicit list of all known EOS parameter keys
+for (const k of ALL_EOS_KEYS) delete eosParams[k];
 
   const uDefaults = state.EOS_DEFAULTS[eosModel];
   if (!uDefaults) {
@@ -87,7 +87,7 @@ function updateEosParamsUI(){
     Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);
   } else {
     const knownKeys = Object.keys(uDefaults);
-    for (const k of knownKeys) eosParams[k] = uDefaults[k];        // mutate in-place on already-cleaned object.
+for (const k of ALL_EOS_KEYS) delete eosParams[k];
   }
   
   // NOTE: Each case has an explicit `break;` to prevent fallthrough into other EOS types' params.
@@ -214,7 +214,10 @@ function uiInitSim() {
 }
 
 /** Initialize the simulation state with current parameters.
- * Called on every parameter change (via resetSim) and at startup. */
+ * Calls uiInitSim() to read fresh DOM values and run extra setup (resetWarnCounters, FP grid),
+ * then delegates to state.initSim({skipReadParams: true}) which reads slider values directly
+ * from DOM for test-safety. The skipReadParams flag avoids redundant calls since uiInitSim()
+ * already invoked window.readParams(). */
 function initSim() {
   uiInitSim();
   state.initSim({skipReadParams: true});

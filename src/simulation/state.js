@@ -24,16 +24,14 @@ export let eosModel = 'phantom';
  * Cleared and repopulated with only the active model's keys by updateEosParamsUI() before first use,
  * so this pre-population is purely for defensive safety (prevents undefined on early key access). */
 // NOTE: All EOS models must have disjoint parameter keys — if two future models share a name (e.g., both
-// define 'n'), duplicate detection fires console.error at module load. Adding new EOS types is now
+// define 'n'), duplicate detection fires console.error at module load.
 // Validate that all EOS models have disjoint parameter keys — catch silent overwrites early.
-let duplicateKeyFound = false;
 const _allDefaults = {};
 for (const [modelName, params] of Object.entries(EOS_DEFAULTS)) {
     for (const key of Object.keys(params)) {
         if (key in _allDefaults) {
             console.error(`Duplicate EOS parameter "${key}" — defined in multiple models. ` +
                 `Check state.EOS_DEFAULTS: ${modelName} conflicts with existing model.`);
-            duplicateKeyFound = true;
         }
     }
     Object.assign(_allDefaults, params);
@@ -51,10 +49,11 @@ export let timeHistory = [];
 export let phaseHistory = [];
 const maxHistory = 2000;
 
-// Initialize the simulation state from current parameters.
-// @param {Object} [opts] — optional configuration
-//   skipReadParams: if true, assume globals are already populated (e.g., by readParams).
-//                    Use false for UI-triggered resets where fresh DOM values must be read first.
+/** Initialize simulation state from current parameters.
+ * @param {Object} [opts] — optional configuration
+ *   skipReadParams: if true, skip reading DOM globals (use when main.js has already called readParams).
+ *                    Use false for UI-triggered resets where fresh slider values must be read first.
+ */
 export function initSim({skipReadParams = false} = {}) {
   // Skip redundant reads during startup when main.js has just called readParams().
   if (!skipReadParams) { window.readParams(); }
