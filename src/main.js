@@ -55,8 +55,10 @@ function init() {
     // setting this after would cause them to use stale values from the OLD model.
     eosModel = actualModel;
 
-    // Note: stale-key clearing is delegated to updateEosParamsUI(), which owns it as a self-contained
-    // invariant (clears ALL known EOS keys before assigning new defaults). This avoids double-clearing.
+    // Both ui.updateEosParamsUI() and readParams() independently clear ALL known EOS keys before
+    // populating defaults — this is intentional redundancy for safety, not delegation. It ensures
+    // stale parameters from previous models never leak into physics calculations regardless of the
+    // call path (UI switch, direct readParams(), or headless test harness).
 
     calibrated = false;
     ui.updateEosParamsUI();         // reads EOS_DEFAULTS[eosModel] → now correct ✅

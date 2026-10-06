@@ -56,8 +56,8 @@ function readParams(){
       eosParams.Amcc   = safeParse('sliderAmcc', defaults?.Amcc);
       eosParams.m_mcc  = safeParse('sliderMmcc', defaults?.m_mcc); break;
     default:
-      console.error(`Unknown eosModel "${eosModel}" in readParams! Check state.EOS_DEFAULTS for valid keys.`);
-      // Stale-key clearing is handled by updateEosParamsUI() on the UI path; just assign defaults here.
+      console.warn(`Unknown eosModel "${eosModel}" in readParams! Falling back to barotropic defaults. ` +
+        'Check state.eosModel and state.EOS_DEFAULTS for valid keys.');
       Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);
   }
   if(g('valM'))g('valM').textContent=M_val.toFixed(2);
@@ -223,10 +223,11 @@ function calibrateAtA0() {
   calibrated = true; updateEosParamsUI(); resetSim();
 }
 /** UI-specific setup: read fresh DOM values and run extra initialization.
- * Note: warn counter resets were moved to updateHorizonInfo for lazy evaluation
- * — they only fire when a warning has actually been triggered. */
+ * Resets warning counters before grid rebuild so clamping detection starts fresh
+ * for each simulation cycle. */
 function uiInitSim() {
   readParams();
+  resetWarnCounters(); // ensure _clampingDetected and warn state start clean on each sim restart
   if (eosModel === 'barotropic') { initFPGrid(M_val, A_val, r0_val); }
 }
 
@@ -237,8 +238,8 @@ function uiInitSim() {
  * calls since uiInitSim() already invoked window.readParams().
  *
  * Note: This wrapper always passes {skipReadParams: true} to state.initSim — it never forwards
- * arguments. main.js is the sole caller and always uses this path; direct callers should use
- * state.initSkip({skipReadParams}) if they need fine-grained control over DOM reads. */
+ * arguments. main.js is the sole caller; direct callers needing fine-grained control should use
+ * state.initSim({skipReadParams}) from simulation/state.js instead. */
 function initSim() {
   uiInitSim();
   state.initSim({skipReadParams: true});
