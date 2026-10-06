@@ -1,5 +1,11 @@
 /** @module calibration — UI parameter reading and EOS model selector helpers. */
 
+// Explicit list of all known EOS parameter keys, used for stale-key cleanup in both
+// readParams() and updateEosParamsUI(). Kept here (not imported from state.js) to avoid
+// circular dependencies while ensuring a single source of truth.
+const ALL_EOS_KEYS = ['omega', 'Ap', 'alpha_p', 'n', 'Ac', 'alpha_c',
+  'Agc', 'n_gc', 'Amcc', 'm_mcc'];
+
 // Single source of truth for EOS defaults (see state.js). Needed by both readParams safeParse fallbacks
 // and updateEosParamsUI slider initialization so a single constant map drives display + physics logic.
 import * as state from '../simulation/state.js';
@@ -27,6 +33,10 @@ function readParams(){
     if (!el || isNaN(parseFloat(el.value))) return def; // use explicit default directly
     return parseFloat(el.value);
   };
+
+  // Clear ALL known EOS keys first — prevents ghost/stale parameters from previous models
+  // that could corrupt physics calculations if the caller doesn't go through updateEosParamsUI.
+  for (const k of ALL_EOS_KEYS) delete eosParams[k];
 
   // Default values per EOS model, sourced from state.EOS_DEFAULTS. These serve as
   // secondary-safe-parse fallbacks (behind DOM slider values) to ensure physics code
@@ -71,15 +81,14 @@ function makeEosRow(labelHtml, inputId, minVal, maxVal, stepVal, displayValue){
 }
 
 function updateEosParamsUI(){
+  // Clear stale keys FIRST — always necessary regardless of DOM state.
+  // Prevents ghost parameters when switching models, even if the container isn't ready yet.
+  for (const k of ALL_EOS_KEYS) delete eosParams[k];
+
   // Bail early if the container element doesn't exist (unit tests, headless environments).
   // This prevents innerHTML assignment on a missing element and avoids leaving stale sliders visible.
   const container = document.getElementById('eosParams');
   if (!container) return;
-
-  // Clear all known EOS parameters before assigning new ones — prevents ghost keys when switching models.
-const ALL_EOS_KEYS = ['omega', 'Ap', 'alpha_p', 'n', 'Ac', 'alpha_c',
-'Agc', 'n_gc', 'Amcc', 'm_mcc']; // explicit list of all known EOS parameter keys
-for (const k of ALL_EOS_KEYS) delete eosParams[k];
 
   const uDefaults = state.EOS_DEFAULTS[eosModel];
   if (!uDefaults) {
@@ -116,7 +125,7 @@ for (const k of ALL_EOS_KEYS) delete eosParams[k];
   container.innerHTML=html;
   const rangeInputs = container.querySelectorAll('input[type="range"]');
   rangeInputs.forEach(sl => {
-    sl.addEventListener('input', () => { scheduleReadParams(); if(simRunning) resetSim(); });
+    sl.addEventListener('input', () => { readParams(); if (simRunning) resetSim(); });
   });
   const groupIds = container.querySelectorAll('[id$="-wrapper"]');
   groupIds.forEach(wrapper => {
@@ -128,7 +137,7 @@ for (const k of ALL_EOS_KEYS) delete eosParams[k];
       const slider = document.getElementById(sliderId);
       if (slider) {
         slider.value = numInput.value;
-        scheduleReadParams();
+        readParams();
         if (simRunning) resetSim();
       }
     };
@@ -199,17 +208,28 @@ function updateHorizonInfo(){
  * Note: calibrated is intentionally cleared (set false) when switching models in main.js —
  * each EOS type has different parameter semantics and equilibrium conditions, so previous
  * calibration values are not preserved across switches. */
-function calibrateAtA0(){const f_a0=lapseF(a0_val,M_val,A_val,r0_val);if(f_a0<=0) { console.warn('Cannot calibrate: lapseF(a₀) ≤ 0 — check a₀ relative to horizon.'); return; }
-switch(eosModel){case'barotropic':eosParams.omega=calibrateOmega(a0_val,M_val,A_val,r0_val);break;case'phantom':eosParams.Ap=calibratePhantomParams(a0_val,M_val,A_val,r0_val,eosParams);break;case'chaplygin':eosParams.Ac=calibrateChaplyginParams(a0_val,M_val,A_val,r0_val);break;case'cosmicChap':eosParams.Agc=calibrateCosmicChap(a0_val,M_val,A_val,r0_val);break;case'modCosmicChap':eosParams.Amcc=calibrateModCosmicChap(a0_val,M_val,A_val,r0_val);break;default:
+function calibrateAtA0() {
+  const f_a0 = lapseF(a0_val, M_val, A_val, r0_val);
+  if (f_a0 <= 0) { console.warn('Cannot calibrate: lapseF(a₀) ≤ 0 — check a₀ relative to horizon.'); return; }
+
+  switch(eosModel) {
+    case 'barotropic': eosParams.omega = calibrateOmega(a0_val, M_val, A_val, r0_val); break;
+    case 'phantom': eosParams.Ap = calibratePhantomParams(a0_val, M_val, A_val, r0_val, eosParams); break;
+    case 'chaplygin': eosParams.Ac = calibrateChaplyginParams(a0_val, M_val, A_val, r0_val); break;
+    case 'cosmicChap': eosParams.Agc = calibrateCosmicChap(a0_val, M_val, A_val, r0_val); break;
+    case 'modCosmicChap': eosParams.Amcc = calibrateModCosmicChap(a0_val, M_val, A_val, r0_val); break;
+    default:
       console.error(`Unknown eosModel "${eosModel}" in calibrateAtA0! Check state.EOS_DEFAULTS for valid keys.`);
       return;
   }
 
-  calibrated=true;updateEosParamsUI();resetSim();}
+  calibrated = true; updateEosParamsUI(); resetSim();
+}
 /** UI-specific setup: read fresh DOM values and run extra initialization. */
 function uiInitSim() {
   readParams();
-  resetWarnCounters();
+  // resetWarnCounters is called only when warnings are actually cleared
+  // (see updateHorizonInfo), not unconditionally on every init.
   if (eosModel === 'barotropic') { initFPGrid(M_val, A_val, r0_val); }
 }
 

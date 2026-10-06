@@ -63,7 +63,8 @@ function barotropicVpp(a0, M, A, r0) {
   return fpp + fp / a0 - (fp * fp) / f;
 }
 
-// Phantom calibration: Solve V'(a₀)=0 for Ap
+// Phantom calibration: Solve V'(a₀)=0 for Ap.
+// Reads only params.Ap from the eosParams object (other phantom keys like alpha_p, n are unused).
 function calibratePhantomParams(a0, M, A, r0, params) {
   const f = lapseF(a0, M, A, r0);
   if (f <= 0) return NaN;
