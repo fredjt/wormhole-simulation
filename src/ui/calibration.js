@@ -71,7 +71,13 @@ function makeEosRow(labelHtml, inputId, minVal, maxVal, stepVal, displayValue){
 }
 
 function updateEosParamsUI(){
-  // Clear all known EOS parameters before assigning new ones — prevents ghost keys when called outside the UI flow.
+  // Finding 7: Move the early-return guard to before parameter clearing so we bail without side-effects when
+  // called from a test harness, async callback, or any path where DOM isn't yet available. Stale slider elements
+  // are no longer left visible because we never reach innerHTML assignment in that case.
+  const container = document.getElementById('eosParams');
+  if (!container) return;
+
+  // Clear all known EOS parameters before assigning new ones — prevents ghost keys when switching models.
   const allKnownKeys = Object.values(state.EOS_DEFAULTS).flatMap(Object.keys);
   for (const k of new Set(allKnownKeys)) delete eosParams[k];
 
@@ -83,10 +89,6 @@ function updateEosParamsUI(){
     const knownKeys = Object.keys(uDefaults);
     for (const k of knownKeys) eosParams[k] = uDefaults[k];        // mutate in-place on already-cleaned object.
   }
-
-  //  Guard against missing DOM element (e.g., called from test harness or async callback).
-  const container=document.getElementById('eosParams');
-  if (!container) return;
   
   // NOTE: Each case has an explicit `break;` to prevent fallthrough into other EOS types' params.
   let html='';

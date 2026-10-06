@@ -24,8 +24,7 @@ export let eosModel = 'phantom';
  * Cleared and repopulated with only the active model's keys by updateEosParamsUI() before first use,
  * so this pre-population is purely for defensive safety (prevents undefined on early key access). */
 // NOTE: All EOS models must have disjoint parameter keys — if two future models share a name (e.g., both
-// define 'n'), Object.assign silently overwrites earlier values with no warning. Adding new EOS types is now
-// a multi-touch change across state.js, calibration.js (readParams + updateEosParamsUI switches), and main.js.
+// define 'n'), duplicate detection fires console.error at module load. Adding new EOS types is now
 // Validate that all EOS models have disjoint parameter keys — catch silent overwrites early.
 let duplicateKeyFound = false;
 const _allDefaults = {};
