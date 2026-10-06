@@ -78,7 +78,8 @@ function init() {
   });
   document.getElementById('btnReset').addEventListener('click', ui.resetSim);
   
-  // Initialize — readParams already called above, so skip redundant DOM writes via {skipReadParams:true}.
+  // ui.readParams() was just called at line 75, which populates all globals (a0_val, M_val, etc.).
+  // state.initSim({skipReadParams: true}) skips re-reading DOM and uses those already-populated globals.
   ui.readParams();
   ui.updateHorizonInfo();
   ui.updateEosParamsUI();

@@ -32,7 +32,9 @@ function readParams(){
   };
 
   // Clear ALL known EOS keys first — prevents ghost/stale parameters from previous models
-  // that could corrupt physics calculations if the caller doesn't go through updateEosParamsUI.
+  // that could corrupt physics calculations. This clearing is intentional redundancy: both
+  // readParams() and updateEosParamsUI() independently enforce it so each function works
+  // correctly regardless of call ordering (UI switch, direct programmatic calls, or tests).
   for (const k of ALL_EOS_KEYS) delete eosParams[k];
 
   // Default values per EOS model, sourced from state.EOS_DEFAULTS. These serve as
@@ -79,7 +81,8 @@ function makeEosRow(labelHtml, inputId, minVal, maxVal, stepVal, displayValue){
 
 function updateEosParamsUI(){
   // Clear stale keys FIRST — always necessary regardless of DOM state.
-  // Prevents ghost parameters when switching models, even if the container isn't ready yet.
+  // This is intentional redundancy with readParams()'s own clear loop; each function
+  // works correctly independently so stale parameters never leak regardless of call path.
   for (const k of ALL_EOS_KEYS) delete eosParams[k];
 
   // Bail early if the container element doesn't exist (unit tests, headless environments).
@@ -122,7 +125,7 @@ function updateEosParamsUI(){
   container.innerHTML=html;
   const rangeInputs = container.querySelectorAll('input[type="range"]');
   rangeInputs.forEach(sl => {
-    sl.addEventListener('input', () => { readParams(); if (simRunning) resetSim(); });
+    sl.addEventListener('input', scheduleReadParams);
   });
   const groupIds = container.querySelectorAll('[id$="-wrapper"]');
   groupIds.forEach(wrapper => {
@@ -134,8 +137,7 @@ function updateEosParamsUI(){
       const slider = document.getElementById(sliderId);
       if (slider) {
         slider.value = numInput.value;
-        readParams();
-        if (simRunning) resetSim();
+        scheduleReadParams();
       }
     };
     numInput.addEventListener('input', () => {
@@ -210,11 +212,31 @@ function calibrateAtA0() {
   if (f_a0 <= 0) { console.warn('Cannot calibrate: lapseF(a₀) ≤ 0 — check a₀ relative to horizon.'); return; }
 
   switch(eosModel) {
-    case 'barotropic': eosParams.omega = calibrateOmega(a0_val, M_val, A_val, r0_val); break;
-    case 'phantom': eosParams.Ap = calibratePhantomParams(a0_val, M_val, A_val, r0_val, eosParams); break;
-    case 'chaplygin': eosParams.Ac = calibrateChaplyginParams(a0_val, M_val, A_val, r0_val); break;
-    case 'cosmicChap': eosParams.Agc = calibrateCosmicChap(a0_val, M_val, A_val, r0_val); break;
-    case 'modCosmicChap': eosParams.Amcc = calibrateModCosmicChap(a0_val, M_val, A_val, r0_val); break;
+    case 'barotropic':
+      const omega = calibrateOmega(a0_val, M_val, A_val, r0_val);
+      if (!isFinite(omega)) { console.error('Calibration produced non-finite omega; skipping.'); return; }
+      eosParams.omega = omega;
+      break;
+    case 'phantom':
+      const Ap = calibratePhantomParams(a0_val, M_val, A_val, r0_val, eosParams);
+      if (!isFinite(Ap)) { console.error('Calibration produced non-finite Ap; skipping.'); return; }
+      eosParams.Ap = Ap;
+      break;
+    case 'chaplygin':
+      const Ac = calibrateChaplyginParams(a0_val, M_val, A_val, r0_val);
+      if (!isFinite(Ac)) { console.error('Calibration produced non-finite Ac; skipping.'); return; }
+      eosParams.Ac = Ac;
+      break;
+    case 'cosmicChap':
+      const Agc = calibrateCosmicChap(a0_val, M_val, A_val, r0_val);
+      if (!isFinite(Agc)) { console.error('Calibration produced non-finite Agc; skipping.'); return; }
+      eosParams.Agc = Agc;
+      break;
+    case 'modCosmicChap':
+      const Amcc = calibrateModCosmicChap(a0_val, M_val, A_val, r0_val);
+      if (!isFinite(Amcc)) { console.error('Calibration produced non-finite Amcc; skipping.'); return; }
+      eosParams.Amcc = Amcc;
+      break;
     default:
       console.error(`Unknown eosModel "${eosModel}" in calibrateAtA0! Check state.EOS_DEFAULTS for valid keys.`);
       return;
@@ -233,9 +255,9 @@ function uiInitSim() {
 
 /** Initialize the simulation state with current parameters.
  * Calls uiInitSim() to read fresh DOM values and run extra setup (conditional FP grid init),
- * then delegates to state.initSim({skipReadParams: true}) which reads slider values directly
- * from DOM for availability in headless/non-UI contexts. The skipReadParams flag avoids redundant
- * calls since uiInitSim() already invoked window.readParams().
+ * then delegates to state.initSim({skipReadParams: true}) which uses pre-populated globals
+ * (a0_val, M_val, etc.) instead of re-reading DOM. The skipReadParams flag avoids redundant
+ * reads since uiInitSim() already invoked window.readParams().
  *
  * Note: This wrapper always passes {skipReadParams: true} to state.initSim — it never forwards
  * arguments. main.js is the sole caller; direct callers needing fine-grained control should use
@@ -254,4 +276,18 @@ function resetSim() {
   initSim();
 }
 let lastTime=0;
-export { readParams, updateEosParamsUI, updateHorizonInfo, calibrateAtA0, initSim, resetSim };
+
+// Debounced parameter reader: coalesces rapid slider input events into a single
+// readParams() + resetSim() call via requestAnimationFrame. Prevents 60fps spam
+// during continuous dragging while keeping responsiveness within ~16ms.
+let _scheduleHandle = null;
+function scheduleReadParams() {
+  if (_scheduleHandle) return; // already scheduled, coalesce
+  _scheduleHandle = requestAnimationFrame(() => {
+    _scheduleHandle = null;
+    readParams();
+    if (simRunning) resetSim();
+  });
+}
+
+export { readParams, scheduleReadParams, updateEosParamsUI, updateHorizonInfo, calibrateAtA0, initSim, resetSim };
