@@ -256,6 +256,7 @@ function uiInitSim() {
   readParams();
   resetWarnCounters(); // ensure _clampingDetected and warn state start clean on each sim restart
   if (eosModel === 'barotropic') { initFPGrid(M_val, A_val, r0_val); }
+  _resetPotGraphCache(); // invalidate stale potential graph cache for new parameters
 }
 
 /** Initialize the simulation state with current parameters.
