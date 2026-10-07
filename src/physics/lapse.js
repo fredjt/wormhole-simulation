@@ -16,6 +16,8 @@ var _perfNow = typeof performance !== 'undefined' && performance.now
     : () => Date.now();
 
 var DEBUG_GRID_INTERP = typeof globalThis !== 'undefined' && globalThis.DEBUG_GRID_INTERP;
+// Debug flag for hypergeom2F1 extreme |z| tracking — set to true temporarily
+/** @type {boolean} */ var __DEBUGDUMPED_HYPERGEOM_WARN = false;  
 var _warnCount = 0;
 var _warnLastTime = 0;
 var WARN_WINDOW_MS = 250; // ms — window length before counter resets
@@ -120,6 +122,14 @@ function hypergeom2F1(a, b, c, z) {
       console.warn('hypergeom2F1: extremely large |z|=' + absZ.toFixed(4) +
         ' — falling back to asymptotic term only');
     }
+
+    // DEBUG: log call site for first extreme z occurrence (remove after debugging)
+    if (!__DEBUGDUMPED_HYPERGEOM_WARN && typeof window !== 'undefined') {
+      console.warn('hypergeom2F1 debug — printing stack trace of FIRST caller with |z|>1e6');
+      console.trace();
+      __DEBUGDUMPED_HYPERGEOM_WARN = true;
+    }
+
     return Math.pow(1 - z, -b); // Asymptotic leading order; results beyond this threshold are untrusted.
   }
 
