@@ -38,14 +38,34 @@ function init() {
       if (simRunning) ui.resetSim();
     });
   });
-  
-  // EOS model selector
+
+
   document.getElementById('eosSelect').addEventListener('change', () => {
-    eosModel = document.getElementById('eosSelect').value;
+    const newModel = document.getElementById('eosSelect').value;
+
+    // Determine the actual model — if unknown, fall back to barotropic.
+    const actualModel = state.EOS_DEFAULTS[newModel] ? newModel : 'barotropic';
+
+    if (newModel !== actualModel) {
+      console.warn(`Unknown EOS model "${newModel}" — using barotropic as fallback.`);
+    }
+
+    // Set global eosModel FIRST, before any downstream function reads it.
+    // updateEosParamsUI() and resetSim() both read state.eosModel to select defaults;
+    // setting this after would cause them to use stale values from the OLD model.
+    eosModel = actualModel;
+
+    // Both ui.updateEosParamsUI() and readParams() independently clear ALL known EOS keys before
+    // populating defaults — this is intentional redundancy for safety, not delegation. It ensures
+    // stale parameters from previous models never leak into physics calculations regardless of the
+    // call path (UI switch, direct readParams(), or headless test harness).
+
     calibrated = false;
-    ui.updateEosParamsUI();
-    if (simRunning) ui.resetSim();
+    ui.updateEosParamsUI();         // rebuilds sliders with new model's defaults
+    ui.updateHorizonInfo();         // horizon display may differ between EOS models
+    if (simRunning) ui.resetSim();  // readParams/initSim with clean params for actualModel ✅
   });
+
   
   // Buttons
   document.getElementById('btnCalibrate').addEventListener('click', ui.calibrateAtA0);
@@ -59,11 +79,12 @@ function init() {
   });
   document.getElementById('btnReset').addEventListener('click', ui.resetSim);
   
-  // Initialize
+  // ui.readParams() was just called at line 75, which populates all globals (a0_val, M_val, etc.).
+  // state.initSim({skipReadParams: true}) skips re-reading DOM and uses those already-populated globals.
   ui.readParams();
   ui.updateHorizonInfo();
   ui.updateEosParamsUI();
-  state.initSim();
+  state.initSim({skipReadParams: true});
   requestAnimationFrame(integrator.mainLoop);
 }
 

@@ -8,13 +8,40 @@ export let a0_val = 2.5;                         // throat outside horizon for A
 export let delta_a_val = 0.01;
 export let v0_val = -0.1;
 export let speedMultiplier = 1.0;
+// Single source of truth for EOS parameter defaults per arXiv:2610.00131.
+// All three consumers — readParams safeParse fallbacks, updateEosParamsUI
+// initial slider values, and the global eosParams object itself — reference
+// this map so a single edit never diverges display from physics logic.
+export const EOS_DEFAULTS = {
+  barotropic:   { omega: -0.3 },
+  phantom:      { Ap: 1, alpha_p: 1, n: 5 },
+  chaplygin:    { Ac: 2, alpha_c: 0.5 },
+  cosmicChap:   { Agc: 2, n_gc: 3 },
+  modCosmicChap:{ Amcc: 2, m_mcc: 3 }
+};
+
+// Derive the canonical list of all EOS parameter keys from EOS_DEFAULTS.
+// Exported for use in calibration.js stale-key cleanup loops — guarantees
+// ALL_EOS_KEYS never desynchronizes from the source-of-truth map.
+export const ALL_EOS_KEYS = Object.values(EOS_DEFAULTS).flatMap(Object.keys);
 export let eosModel = 'phantom';
-// Phantom defaults: Ap calibrated at equilibrium; n=5 matches literature convention [46].
-// Barotropic model default (omega: -0.3) — having it here prevents undefined physics
-// calls when barotropic is selected outside the normal UI init flow.
-// NOTE: eosParams persists across initSim() calls; it is updated by readParams()
-//       when the user changes model or slider values (not reset on sim start).
-export let eosParams = {Ap: 1, alpha_p: 1, n: 5, omega: -0.3};
+/** @type {{ [key: string]: number }} — Union of all EOS model defaults at module load.
+ * Cleared and repopulated with only the active model's keys by updateEosParamsUI() before first use,
+ * so this pre-population is purely for defensive safety (prevents undefined on early key access). */
+// NOTE: All EOS models must have disjoint parameter keys — if two future models share a name (e.g., both
+// define 'n'), duplicate detection fires console.error at module load.
+// Validate that all EOS models have disjoint parameter keys — catch silent overwrites early.
+const _allDefaults = {};
+for (const [modelName, params] of Object.entries(EOS_DEFAULTS)) {
+    for (const key of Object.keys(params)) {
+        if (key in _allDefaults) {
+            console.error(`Duplicate EOS parameter "${key}" — defined in multiple models. ` +
+                `Check state.EOS_DEFAULTS: ${modelName} conflicts with existing model.`);
+        }
+    }
+    Object.assign(_allDefaults, params);
+}
+export let eosParams = { ..._allDefaults };
 export let calibrated = false;
 export let simRunning = false;
 export let simPaused = false;
@@ -27,12 +54,24 @@ export let timeHistory = [];
 export let phaseHistory = [];
 const maxHistory = 2000;
 
-function initSim(){
+/** Initialize simulation state from current parameters.
+ * @param {Object} [opts] — optional configuration
+ *   skipReadParams: if true, skip reading DOM globals (use when main.js has already called readParams).
+ *                    Use false for UI-triggered resets where fresh slider values must be read first.
+ */
+export function initSim({skipReadParams = false} = {}) {
+  // Skip redundant reads during startup when main.js has just called readParams().
+  if (!skipReadParams) { window.readParams(); }
   const f_a0=lapseF(a0_val,M_val,A_val,r0_val);
   if(f_a0<=0)return;
-  let deltaAPct=parseFloat(document.getElementById('sliderDeltaA').value);
-  if(document.getElementById('chkSmallPerturb').checked)deltaAPct=0.01;
-  v_current=parseFloat(document.getElementById('sliderV0').value);
+    // Optional chaining prevents TypeError when DOM elements are absent (headless/test contexts);
+    // nullish coalescing provides fallback defaults. These serve two purposes:
+    // (1) crash prevention and (2) safe defaults — equivalent to readParams()'s own pattern.
+    // Headless callers should use skipReadParams:true since they lack DOM elements entirely.
+    let deltaAPct=parseFloat(document.getElementById('sliderDeltaA')?.value ?? '0.01');
+    // Force 1% perturbation when small-perturb checkbox is checked (user preference).
+    if(document.getElementById('chkSmallPerturb')?.checked)deltaAPct=0.01;
+    v_current=parseFloat(document.getElementById('sliderV0')?.value ?? '-0.1');
   tau=0;
   a_current=a0_val*(1+deltaAPct/100);
   timeHistory=[{tau:0,a:a_current,v:v_current}];
@@ -41,5 +80,3 @@ function initSim(){
   // The Play button guards against running un-calibrated sims by calling
   // calibrateAtA0() first on the initial click (see main.js line 53).
 }
-
-export { initSim };

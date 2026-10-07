@@ -1,3 +1,19 @@
+/** @module calibration — UI parameter reading and EOS model selector helpers. */
+
+/** Centralized stale-key cleanup — deletes all known EOS parameter keys from eosParams.
+ * Called by both readParams() and updateEosParamsUI() to ensure no ghost parameters
+ * leak between model switches, regardless of call ordering or context (UI, tests, etc.). */
+function clearAllEosParams() {
+  for (const k of ALL_EOS_KEYS) delete eosParams[k];
+}
+
+// Single source of truth for EOS defaults (see state.js). Needed by both readParams safeParse fallbacks
+// and updateEosParamsUI slider initialization so a single constant map drives display + physics logic.
+import * as state from '../simulation/state.js';
+
+/** Reads all parameters into globals. Note: eosModel always comes from state.eosModel
+ * (never re-read from DOM). Other parameters fall back to hardcoded defaults when DOM elements are missing,
+ * making readParams() safe for unit tests and headless environments where no UI is rendered. */
 function readParams(){
   const g=id=>document.getElementById(id);
 
@@ -7,7 +23,8 @@ function readParams(){
   A_val   = parseFloat(g('sliderA')?.value || '0.3');
   r0_val  = parseFloat(g('sliderR0')?.value || '0.2');
   a0_val  = parseFloat(g('sliderA0')?.value || '2.5');
-  eosModel=g('eosSelect').value;
+  // Use state.eosModel (module export) as the single source of truth — never re-read from DOM.
+  state.eosModel;
   speedMultiplier=parseFloat(g('sliderSpeed')?.value||'1.0');
   autoStop=g('chkAutoStop')?.checked||false;
 
@@ -18,29 +35,33 @@ function readParams(){
     return parseFloat(el.value);
   };
 
-  // Default values per EOS model. These are used as safe-parse fallbacks when
-  // DOM elements are unavailable (unit tests, rapid switching) and also feed the
-  // initial displayValue in makeEosRow so that freshly-created sliders render with
-  // paper-consistent numbers on first load.
+  // Clear ALL known EOS keys first — prevents ghost/stale parameters from previous models.
+  clearAllEosParams();
+
+  // Default values per EOS model, sourced from state.EOS_DEFAULTS. These serve as
+  // secondary-safe-parse fallbacks (behind DOM slider values) to ensure physics code
+  // always has valid parameters even when sliders haven't been created yet or hold NaN.
+  // NOTE: Each case has an explicit `break;` to prevent fallthrough into other EOS types' params.
+  const defaults = state.EOS_DEFAULTS[eosModel];
   switch(eosModel){
-    case 'barotropic': eosParams.omega = safeParse('sliderOmega', -0.3); break;
-    // phantom: Ap is calibrated at equilibrium; n=5 matches literature convention [46]
+    case 'barotropic': eosParams.omega = safeParse('sliderOmega', defaults?.omega); break;
     case 'phantom':
-      eosParams.Ap     = safeParse('sliderAp', 1);
-      eosParams.alpha_p = safeParse('sliderAlphaP', 1);
-      eosParams.n       = safeParse('sliderN', 5); break;
-    // chaplygin: alpha_c=0.5 matches the value used in computeSigmaFromEOS
+      eosParams.Ap     = safeParse('sliderAp', defaults?.Ap);
+      eosParams.alpha_p = safeParse('sliderAlphaP', defaults?.alpha_p);
+      eosParams.n       = safeParse('sliderN', defaults?.n); break;
     case 'chaplygin':
-      eosParams.Ac     = safeParse('sliderAc', 2);
-      eosParams.alpha_c = safeParse('sliderAlphaC', 0.5); break;
-    // cosmicChap (GCCG): gamma=n_gc=3 is a mid-range exponent from Fig 6; B_G calibrated at equilibrium
+      eosParams.Ac     = safeParse('sliderAc', defaults?.Ac);
+      eosParams.alpha_c = safeParse('sliderAlphaC', defaults?.alpha_c); break;
     case 'cosmicChap':
-      eosParams.Agc   = safeParse('sliderAgc', 2);
-      eosParams.n_gc  = safeParse('sliderNgc', 3); break;
-    // modCosmicChap: Amcc=A_M=2 per Eq (59) of the paper; m_mcc defaults to 1
+      eosParams.Agc   = safeParse('sliderAgc', defaults?.Agc);
+      eosParams.n_gc  = safeParse('sliderNgc', defaults?.n_gc); break;
     case 'modCosmicChap':
-      eosParams.Amcc   = safeParse('sliderAmcc', 2);
-      eosParams.m_mcc  = safeParse('sliderMmcc', 3); break;
+      eosParams.Amcc   = safeParse('sliderAmcc', defaults?.Amcc);
+      eosParams.m_mcc  = safeParse('sliderMmcc', defaults?.m_mcc); break;
+    default:
+      console.warn(`Unknown eosModel "${eosModel}" in readParams! Falling back to barotropic defaults. ` +
+        'Check state.eosModel and state.EOS_DEFAULTS for valid keys.');
+      Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);
   }
   if(g('valM'))g('valM').textContent=M_val.toFixed(2);
   if(g('valA'))g('valA').textContent=A_val.toFixed(2);
@@ -60,7 +81,26 @@ function makeEosRow(labelHtml, inputId, minVal, maxVal, stepVal, displayValue){
 }
 
 function updateEosParamsUI(){
-  const container=document.getElementById('eosParams');
+  // Clear stale keys FIRST — always necessary regardless of DOM state.
+  clearAllEosParams();
+
+  // Bail early if the container element doesn't exist (unit tests, headless environments).
+  // This prevents innerHTML assignment on a missing element and avoids leaving stale sliders visible.
+  const container = document.getElementById('eosParams');
+  if (!container) return;
+
+  const uDefaults = state.EOS_DEFAULTS[eosModel];
+  if (!uDefaults) {
+    // Unknown model: log warning, fall back to barotropic for both physics AND display.
+    console.warn(`Unknown eosModel "${eosModel}" — falling back to barotropic.`);
+    state.eosModel = 'barotropic';
+    Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);
+  } else {
+    // Re-populate eosParams with the current model's defaults now that all keys are cleared.
+    for (const k of Object.keys(uDefaults)) eosParams[k] = uDefaults[k];
+  }
+  
+  // NOTE: Each case has an explicit `break;` to prevent fallthrough into other EOS types' params.
   let html='';
 
   // Display values for freshly-created sliders mirror the safeParse defaults above.
@@ -79,11 +119,18 @@ function updateEosParamsUI(){
     case 'modCosmicChap':
       html += makeEosRow('A<sub>mcc</sub>', 'sliderAmcc', '0.1', '10', '0.1', eosParams.Amcc.toFixed(2)) +
               makeEosRow('m<sub>mcc</sub>', 'sliderMmcc', '1', '5', '0.1', eosParams.m_mcc.toFixed(2)); break;
+    default:
+      console.warn(`Unknown eosModel "${eosModel}" — clearing stale sliders to prevent cross-model parameter leakage.`);
+      html = '';
   }
   container.innerHTML=html;
   const rangeInputs = container.querySelectorAll('input[type="range"]');
   rangeInputs.forEach(sl => {
-    sl.addEventListener('input', () => { scheduleReadParams(); if(simRunning) resetSim(); });
+    sl.addEventListener('input', scheduleReadParams);
+    // Ensure final value is captured even if it falls in the debounce gap
+    // between rAF scheduling and execution (e.g., rapid drag + immediate release).
+    ['mouseup','touchend'].forEach(evt =>
+      sl.addEventListener(evt, () => { readParams(); if(simRunning) resetSim(); }, true));
   });
   const groupIds = container.querySelectorAll('[id$="-wrapper"]');
   groupIds.forEach(wrapper => {
@@ -96,7 +143,6 @@ function updateEosParamsUI(){
       if (slider) {
         slider.value = numInput.value;
         scheduleReadParams();
-        if (simRunning) resetSim();
       }
     };
     numInput.addEventListener('input', () => {
@@ -162,37 +208,91 @@ function updateHorizonInfo(){
     if(a0_val<=rPlus+0.01){if(warnEl)warnEl.style.display='block';a0Slider.value=rPlus+0.1;a0_val=parseFloat(a0Slider.value);if(g('valA0'))g('valA0').textContent=a0_val.toFixed(2);}else if(warnEl)warnEl.style.display='none';
   }else{infoEl.textContent='No horizon found (regular geometry)';a0Slider.min='0.3';a0Slider.max='5.0';if(warnEl)warnEl.style.display='none';}
 }
-function calibrateAtA0(){const f_a0=lapseF(a0_val,M_val,A_val,r0_val);if(f_a0<=0)return;switch(eosModel){case'barotropic':eosParams.omega=calibrateOmega(a0_val,M_val,A_val,r0_val);break;case'phantom':eosParams.Ap=calibratePhantomParams(a0_val,M_val,A_val,r0_val,eosParams);break;case'chaplygin':eosParams.Ac=calibrateChaplyginParams(a0_val,M_val,A_val,r0_val);break;case'cosmicChap':eosParams.Agc=calibrateCosmicChap(a0_val,M_val,A_val,r0_val);break;case'modCosmicChap':eosParams.Amcc=calibrateModCosmicChap(a0_val,M_val,A_val,r0_val);break;}calibrated=true;updateEosParamsUI();resetSim();}
-/** Initialize the simulation state with current parameters.
- * Called on every parameter change (via resetSim) and at startup. */
-function initSim() {
+/** Calibrate EOS parameters so the throat a₀ sits at equilibrium for the current model.
+ * Note: calibrated is intentionally cleared (set false) when switching models in main.js —
+ * each EOS type has different parameter semantics and equilibrium conditions, so previous
+ * calibration values are not preserved across switches. */
+function calibrateAtA0() {
+  const f_a0 = lapseF(a0_val, M_val, A_val, r0_val);
+  if (f_a0 <= 0) { console.warn('Cannot calibrate: lapseF(a₀) ≤ 0 — check a₀ relative to horizon.'); return; }
+
+  switch(eosModel) {
+    case 'barotropic':
+      const omega = calibrateOmega(a0_val, M_val, A_val, r0_val);
+      if (!isFinite(omega)) { console.error('Calibration produced non-finite omega; skipping.'); return; }
+      eosParams.omega = omega;
+      break;
+    case 'phantom':
+      const Ap = calibratePhantomParams(a0_val, M_val, A_val, r0_val, eosParams);
+      if (!isFinite(Ap)) { console.error('Calibration produced non-finite Ap; skipping.'); return; }
+      eosParams.Ap = Ap;
+      break;
+    case 'chaplygin':
+      const Ac = calibrateChaplyginParams(a0_val, M_val, A_val, r0_val);
+      if (!isFinite(Ac)) { console.error('Calibration produced non-finite Ac; skipping.'); return; }
+      eosParams.Ac = Ac;
+      break;
+    case 'cosmicChap':
+      const Agc = calibrateCosmicChap(a0_val, M_val, A_val, r0_val);
+      if (!isFinite(Agc)) { console.error('Calibration produced non-finite Agc; skipping.'); return; }
+      eosParams.Agc = Agc;
+      break;
+    case 'modCosmicChap':
+      const Amcc = calibrateModCosmicChap(a0_val, M_val, A_val, r0_val);
+      if (!isFinite(Amcc)) { console.error('Calibration produced non-finite Amcc; skipping.'); return; }
+      eosParams.Amcc = Amcc;
+      break;
+    default:
+      console.error(`Unknown eosModel "${eosModel}" in calibrateAtA0! Check state.EOS_DEFAULTS for valid keys.`);
+      return;
+  }
+
+  calibrated = true; updateEosParamsUI(); resetSim();
+}
+/** UI-specific setup: read fresh DOM values and run extra initialization.
+ * Resets warning counters before grid rebuild so clamping detection starts fresh
+ * for each simulation cycle. */
+function uiInitSim() {
   readParams();
-  resetWarnCounters();
-  if (eosModel === 'barotropic') {
-    initFPGrid(M_val, A_val, r0_val);
-  }
-  var f_a0 = lapseF(a0_val, M_val, A_val, r0_val);
-  if (f_a0 <= 0) return;
-  var deltaAPct = parseFloat(document.getElementById('sliderDeltaA')?.value || '0.01');
-  if (document.getElementById('chkSmallPerturb').checked) {
-    deltaAPct = 0.01;
-  }
-  v_current = parseFloat(document.getElementById('sliderV0')?.value || '-0.1');
-  tau = 0;
-  a_current = a0_val * (1 + deltaAPct / 100);
-  timeHistory = [{tau: 0, a: a_current, v: v_current}];
-  phaseHistory = [{a: a_current, v: v_current}];
-  // NOTE: calibrated stays false until calibrateAtA0() is called.
-  // The Play button guards against running un-calibrated sims by calling
-  // calibrateAtA0() first on the initial click (see main.js line 53).
+  resetWarnCounters(); // ensure _clampingDetected and warn state start clean on each sim restart
+  if (eosModel === 'barotropic') { initFPGrid(M_val, A_val, r0_val); }
 }
 
-/** Reset the simulation — stops any running sim and re-initialises from current UI params. */
+/** Initialize the simulation state with current parameters.
+ * Calls uiInitSim() to read fresh DOM values and run extra setup (conditional FP grid init),
+ * then delegates to state.initSim({skipReadParams: true}) which uses pre-populated globals
+ * (a0_val, M_val, etc.) instead of re-reading DOM. The skipReadParams flag avoids redundant
+ * reads since uiInitSim() already invoked window.readParams().
+ *
+ * Note: This wrapper always passes {skipReadParams: true} to state.initSim — it never forwards
+ * arguments. main.js is the sole caller; direct callers needing fine-grained control should use
+ * state.initSim({skipReadParams}) from simulation/state.js instead. */
+function initSim() {
+  uiInitSim();
+  state.initSim({skipReadParams: true});
+}
+
+/** Reset the simulation — stops any running sim and re-initialises from current UI params.
+ * Calls initSim() which handles fresh DOM reads + extra setup, then delegates to
+ * state's unified implementation with skipReadParams:true. */
 function resetSim() {
   simRunning = false;
   simPaused = false;
-  readParams();
   initSim();
 }
 let lastTime=0;
-export { readParams, updateEosParamsUI, updateHorizonInfo, calibrateAtA0, initSim, resetSim };
+
+// Debounced parameter reader: coalesces rapid slider input events into a single
+// readParams() + resetSim() call via requestAnimationFrame. Prevents 60fps spam
+// during continuous dragging while keeping responsiveness within ~16ms.
+let _scheduleHandle = null;
+function scheduleReadParams() {
+  if (_scheduleHandle) return; // already scheduled, coalesce
+  _scheduleHandle = requestAnimationFrame(() => {
+    _scheduleHandle = null;
+    readParams();
+    if (simRunning) resetSim();
+  });
+}
+
+export { readParams, scheduleReadParams, updateEosParamsUI, updateHorizonInfo, calibrateAtA0, initSim, resetSim };
