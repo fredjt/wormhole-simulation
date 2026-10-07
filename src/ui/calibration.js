@@ -1,7 +1,11 @@
 /** @module calibration — UI parameter reading and EOS model selector helpers. */
 
-// Re-export ALL_EOS_KEYS from state.js so stale-key cleanup loops use the canonical list.
-export { ALL_EOS_KEYS } from '../simulation/state.js';
+/** Centralized stale-key cleanup — deletes all known EOS parameter keys from eosParams.
+ * Called by both readParams() and updateEosParamsUI() to ensure no ghost parameters
+ * leak between model switches, regardless of call ordering or context (UI, tests, etc.). */
+function clearAllEosParams() {
+  for (const k of ALL_EOS_KEYS) delete eosParams[k];
+}
 
 // Single source of truth for EOS defaults (see state.js). Needed by both readParams safeParse fallbacks
 // and updateEosParamsUI slider initialization so a single constant map drives display + physics logic.
@@ -19,8 +23,8 @@ function readParams(){
   A_val   = parseFloat(g('sliderA')?.value || '0.3');
   r0_val  = parseFloat(g('sliderR0')?.value || '0.2');
   a0_val  = parseFloat(g('sliderA0')?.value || '2.5');
-  // Use state.eosModel (global singleton) instead of re-reading from DOM to keep source-of-truth consistent.
-  eosModel=state.eosModel;
+  // Use state.eosModel (module export) as the single source of truth — never re-read from DOM.
+  state.eosModel;
   speedMultiplier=parseFloat(g('sliderSpeed')?.value||'1.0');
   autoStop=g('chkAutoStop')?.checked||false;
 
@@ -31,11 +35,8 @@ function readParams(){
     return parseFloat(el.value);
   };
 
-  // Clear ALL known EOS keys first — prevents ghost/stale parameters from previous models
-  // that could corrupt physics calculations. This clearing is intentional redundancy: both
-  // readParams() and updateEosParamsUI() independently enforce it so each function works
-  // correctly regardless of call ordering (UI switch, direct programmatic calls, or tests).
-  for (const k of ALL_EOS_KEYS) delete eosParams[k];
+  // Clear ALL known EOS keys first — prevents ghost/stale parameters from previous models.
+  clearAllEosParams();
 
   // Default values per EOS model, sourced from state.EOS_DEFAULTS. These serve as
   // secondary-safe-parse fallbacks (behind DOM slider values) to ensure physics code
@@ -81,9 +82,7 @@ function makeEosRow(labelHtml, inputId, minVal, maxVal, stepVal, displayValue){
 
 function updateEosParamsUI(){
   // Clear stale keys FIRST — always necessary regardless of DOM state.
-  // This is intentional redundancy with readParams()'s own clear loop; each function
-  // works correctly independently so stale parameters never leak regardless of call path.
-  for (const k of ALL_EOS_KEYS) delete eosParams[k];
+  clearAllEosParams();
 
   // Bail early if the container element doesn't exist (unit tests, headless environments).
   // This prevents innerHTML assignment on a missing element and avoids leaving stale sliders visible.
@@ -92,7 +91,9 @@ function updateEosParamsUI(){
 
   const uDefaults = state.EOS_DEFAULTS[eosModel];
   if (!uDefaults) {
-    console.warn(`Unknown eosModel "${eosModel}" in updateEosParamsUI — using barotropic as fallback.`);
+    // Unknown model: log warning, fall back to barotropic for both physics AND display.
+    console.warn(`Unknown eosModel "${eosModel}" — falling back to barotropic.`);
+    state.eosModel = 'barotropic';
     Object.assign(eosParams, state.EOS_DEFAULTS.barotropic);
   } else {
     // Re-populate eosParams with the current model's defaults now that all keys are cleared.
@@ -126,6 +127,10 @@ function updateEosParamsUI(){
   const rangeInputs = container.querySelectorAll('input[type="range"]');
   rangeInputs.forEach(sl => {
     sl.addEventListener('input', scheduleReadParams);
+    // Ensure final value is captured even if it falls in the debounce gap
+    // between rAF scheduling and execution (e.g., rapid drag + immediate release).
+    ['mouseup','touchend'].forEach(evt =>
+      sl.addEventListener(evt, () => { readParams(); if(simRunning) resetSim(); }, true));
   });
   const groupIds = container.querySelectorAll('[id$="-wrapper"]');
   groupIds.forEach(wrapper => {

@@ -64,9 +64,10 @@ export function initSim({skipReadParams = false} = {}) {
   if (!skipReadParams) { window.readParams(); }
   const f_a0=lapseF(a0_val,M_val,A_val,r0_val);
   if(f_a0<=0)return;
-    // Optional chaining + nullish coalescing prevent crashes when DOM elements don't exist
-    // (headless environments, initialization ordering). readParams() provides equivalent
-    // fallback defaults; these guards are redundant for correctness but prevent TypeError.
+    // Optional chaining prevents TypeError when DOM elements are absent (headless/test contexts);
+    // nullish coalescing provides fallback defaults. These serve two purposes:
+    // (1) crash prevention and (2) safe defaults — equivalent to readParams()'s own pattern.
+    // Headless callers should use skipReadParams:true since they lack DOM elements entirely.
     let deltaAPct=parseFloat(document.getElementById('sliderDeltaA')?.value ?? '0.01');
     // Force 1% perturbation when small-perturb checkbox is checked (user preference).
     if(document.getElementById('chkSmallPerturb')?.checked)deltaAPct=0.01;

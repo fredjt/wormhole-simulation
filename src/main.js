@@ -61,7 +61,8 @@ function init() {
     // call path (UI switch, direct readParams(), or headless test harness).
 
     calibrated = false;
-    ui.updateEosParamsUI();         // reads EOS_DEFAULTS[eosModel] → now correct ✅
+    ui.updateEosParamsUI();         // rebuilds sliders with new model's defaults
+    ui.updateHorizonInfo();         // horizon display may differ between EOS models
     if (simRunning) ui.resetSim();  // readParams/initSim with clean params for actualModel ✅
   });
 
