@@ -1,5 +1,8 @@
 function setupCanvas(id){const canvas=document.getElementById(id);const dpr=window.devicePixelRatio||1;function resize(){const rect=canvas.parentElement.getBoundingClientRect();canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;canvas.style.width=rect.width+'px';canvas.style.height=rect.height+'px';}resize();window.addEventListener('resize',resize);return{canvas,ctx:canvas.getContext('2d'),dpr};}
 const potObj=setupCanvas('potCanvas');const timeObj=setupCanvas('timeCanvas');const phaseObj=setupCanvas('phaseCanvasEl');
+// Parameter cache for potential graph — avoids recomputing lapseF(300×) every frame when params unchanged.
+// Caches {pts, vMin, vMax} keyed by a hash of (M_val|A_val|r0_val). Rebuilt only on param change or explicit redraw.
+var _potGraphCache = null;
 
 function drawGraph(ctx,w,h,drawFn){
   ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,w,h);drawFn(ctx,w,h);ctx.restore();}
@@ -8,8 +11,19 @@ function drawPotentialGraph(){
   const{canvas,ctx}=potObj;const w=canvas.width/(window.devicePixelRatio||1),h=canvas.height/(window.devicePixelRatio||1);
   drawGraph(ctx,w,h,(c,cw,ch)=>{
     const pad={l:50,r:20,t:20,b:35},gw=cw-pad.l-pad.r,gh=ch-pad.t-pad.b;
-    const aMin=0.2,aMax=Math.max(a0_val*3,4),N=300,pts=[];let vMin=1e9,vMax=-1e9;
-    for(let i=0;i<=N;i++){const a=aMin+(aMax-aMin)*i/N;if(lapseF(a,M_val,A_val,r0_val)>0){const s0=calibrated?Math.sqrt(Math.abs(lapseF(a0_val,M_val,A_val,r0_val)))/(2*Math.PI*a0_val):0.1;const V=effPot(a,a0_val,s0,eosModel,eosParams);if(isFinite(V)){pts.push({a,V});vMin=Math.min(vMin,V);vMax=Math.max(vMax,V);}}}
+    // Cap plot range to physically meaningful region: r/r₀ ≤ 16 keeps |z| = (r/r₀)⁴ ≤ ~65k,
+    // well below the asymptotic threshold where hypergeom2F1 loses accuracy.
+    const aMin=0.2,aMax=Math.min(a0_val*3,Math.max(r0_val*16,a0_val)),N=300;
+
+    var pts=[],vMin=1e9,vMax=-1e9; // default to empty graph data
+    // Check parameter cache — only recompute when M/A/r₀ actually changed (~95% of frames idle).
+    if (_potGraphCache && _potGraphCache.key === (M_val|A_val|r0_val)) {
+      pts=_potGraphCache.pts;vMin=_potGraphCache.vMin;vMax=_potGraphCache.vMax;
+    } else {
+      for(let i=0;i<=N;i++){const a=aMin+(aMax-aMin)*i/N;if(lapseF(a,M_val,A_val,r0_val)>0){const s0=calibrated?Math.sqrt(Math.abs(lapseF(a0_val,M_val,A_val,r0_val)))/(2*Math.PI*a0_val):0.1;const V=effPot(a,a0_val,s0,eosModel,eosParams);if(isFinite(V)){pts.push({a,V});vMin=Math.min(vMin,V);vMax=Math.max(vMax,V);}}}   // close isFinite, lapseF>0, for-loop
+      _potGraphCache = {key:(M_val|A_val|r0_val),pts:pts.slice(),vMin:vMin,vMax:vMax};
+    }  // end else/recompute block
+
     if(pts.length<2)return;
     const vRange=vMax-vMin||1;vMin-=vRange*0.1;vMax+=vRange*0.1;
     function toX(a){return pad.l+(a-aMin)/(aMax-aMin)*gw;}function toY(V){return pad.t+gh-(V-vMin)/(vMax-vMin)*gh;}

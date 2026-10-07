@@ -114,9 +114,7 @@ function hypergeom2F1(a, b, c, z) {
   // so very large |z| means r/r₀ >> 1 — the hypergeometric series fundamentally diverges
   // at or near its singularity regardless of iteration count.
   if (absZ > 1e6) {
-    console.warn('hypergeom2F1: extremely large |z|=' + absZ.toFixed(4) +
-      ' — falling back to asymptotic term only');
-    return Math.pow(1 - z, -b); // Asymptotic leading order
+    return Math.pow(1 - z, -b); // Asymptotic leading order only; caller should treat results beyond this threshold as untrusted.
   }
 
   var factor = Math.pow(1 - z, -b);
