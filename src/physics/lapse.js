@@ -7,10 +7,9 @@
 var FD_FIRST_DERIV_H = 1e-7;
 var FD_SECOND_DERIV_H = 1e-5;
 
-// Rate-limit for out-of-bounds warnings during integration (~40/sec max when active).
+// Rate-limit for out-of-bounds warnings during integration.
 // Set DEBUG_GRID_INTERP=true to disable rate limiting for diagnostics.
 // Browser-compatible time source — falls back to Date.now() in Node.js.
-// Used by both the rate-limiter (_shouldWarn) and clamping-detection timer.
 var _perfNow = typeof performance !== 'undefined' && performance.now
     ? () => performance.now()
     : () => Date.now();
@@ -18,8 +17,8 @@ var _perfNow = typeof performance !== 'undefined' && performance.now
 var DEBUG_GRID_INTERP = typeof globalThis !== 'undefined' && globalThis.DEBUG_GRID_INTERP;
 var _warnCount = 0;
 var _warnLastTime = 0;
-var WARN_WINDOW_MS = 250; // ms — window length before counter resets
-var MAX_WARNINGS_PER_WINDOW = 10;
+var WARN_WINDOW_MS = 1000; // ms — window length before counter resets (was 250)
+var MAX_WARNINGS_PER_WINDOW = 3; // per window (~3/sec max, down from ~40/sec)
 function _shouldWarn() {
   if (DEBUG_GRID_INTERP) return true;  // No rate limiting in debug mode
   var now = _perfNow();
