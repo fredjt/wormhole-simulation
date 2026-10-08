@@ -17,11 +17,12 @@ function drawPotentialGraph(){
     // Cap plot range to physically meaningful region: r/r₀ ≤ 16 keeps |z| = (r/r₀)⁴ ≤ ~65k,
     // well below the asymptotic threshold where hypergeom2F1 loses accuracy.
     const aMin=0.2,aMax=Math.min(a0_val*3,Math.max(r0_val*16,a0_val)),N=300;
-    var _rangeCapped = (aMax < Math.max(a0_val*3, 4)); // visual indicator if range was truncated
+    const _rangeCapped = (aMax < Math.max(a0_val*3, 4)); // visual indicator if range was truncated
 
     var pts=[],vMin=1e9,vMax=-1e9; // default to empty graph data
-    // Check parameter cache — only recompute when M/A/r₀ actually changed (~95% of frames idle).
-    var _cacheKey = String(M_val)+'|'+String(A_val)+'|'+String(r0_val);
+    // Check parameter cache — only recompute when M/A/r₀/eosModel actually changed (~95% of frames idle).
+    var _cacheKey = String(M_val.toFixed(8))+'|'+String(A_val.toFixed(8))+'|'+String(r0_val.toFixed(8))
+        + '|'+eosModel;
     if (_potGraphCache && _potGraphCache.key === _cacheKey) {
       pts=_potGraphCache.pts;vMin=_potGraphCache.vMin;vMax=_potGraphCache.vMax;
     } else {
