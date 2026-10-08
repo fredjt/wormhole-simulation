@@ -28,6 +28,10 @@ function readParams(){
   speedMultiplier=parseFloat(g('sliderSpeed')?.value||'1.0');
   autoStop=g('chkAutoStop')?.checked||false;
 
+  // Invalidate stale potential graph cache — ensures next drawPotentialGraph recomputes
+  // with fresh parameters. Called on every readParams() so idle slider changes also clear it.
+  _resetPotGraphCache();
+
   // Helper: safely parse slider value with fallback default (avoids NaN propagation)
   const safeParse = (id, def) => {
     const el = g(id);
