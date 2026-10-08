@@ -218,7 +218,18 @@ function initFPGrid(M, A, r0, N) {
       (M > MASS_THRESHOLD_FACTOR ? GRID_MAX_FACTOR_HIGH_MASS : GRID_MAX_FACTOR_LOW_MASS);
   var rMaxOffsetBased = rMin + RMAX_OFFSET_MULTIPLIER * M;
   var rMax = Math.max(rMaxAbs, rMaxOffsetBased, rMaxFactorBased);
+
+  // Cap rMax so that (r/r₀)^4 ≤ ~65k → |z| < hypergeom2F1 warning threshold.
+  // Hypergeometric series diverges at the singularity; beyond this bound values are unreliable.
+  var RMAX_HYPERGEOM_CAP = Math.max(M, r0 * 16);   // ≈ (r/r₀)⁴ ≤ ~65k
   if (!isFinite(rMax) || rMax <= rMin) { console.warn('initFPGrid: invalid grid bounds'); return false; }
+  if (rMax > RMAX_HYPERGEOM_CAP) {
+    // Grid was extending into the hypergeom2F1 divergence zone — truncate to safe radius.
+    console.warn('initFPGrid: truncating grid from ' + rMax.toFixed(3)
+      + ' → ' + RMAX_HYPERGEOM_CAP.toFixed(3) +
+      ' (hypergeom |z| cap for r₀=' + r0.toFixed(4));
+    rMax = RMAX_HYPERGEOM_CAP;
+  }
 
   // Compute grid spacing.
   var dr = (rMax - rMin) / (N - 1);
