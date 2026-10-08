@@ -54,7 +54,9 @@ export let timeHistory = [];
 export let phaseHistory = [];
 const maxHistory = 2000;
 
-/** Initialize simulation state from current parameters.
+/** Initialize simulation state from current parameters. 
+ * Always resets tau, a_current, v_current and clears history arrays so that Reset
+ * behaves as a full reinitialisation — not just a stop command.
  * @param {Object} [opts] — optional configuration
  *   skipReadParams: if true, skip reading DOM globals (use when main.js has already called readParams).
  *                    Use false for UI-triggered resets where fresh slider values must be read first.
@@ -63,7 +65,6 @@ export function initSim({skipReadParams = false} = {}) {
   // Skip redundant reads during startup when main.js has just called readParams().
   if (!skipReadParams) { window.readParams(); }
   const f_a0=lapseF(a0_val,M_val,A_val,r0_val);
-  if(f_a0<=0)return;
     // Optional chaining prevents TypeError when DOM elements are absent (headless/test contexts);
     // nullish coalescing provides fallback defaults. These serve two purposes:
     // (1) crash prevention and (2) safe defaults — equivalent to readParams()'s own pattern.
@@ -76,6 +77,16 @@ export function initSim({skipReadParams = false} = {}) {
   a_current=a0_val*(1+deltaAPct/100);
   timeHistory=[{tau:0,a:a_current,v:v_current}];
   phaseHistory=[{a:a_current,v:v_current}];
+
+  // Update window-level references so canvas renderers see fresh data.
+  // Object.assign(window, state) in main.js copies getter values at call time (not live bindings),
+  // so after this reassignment the global properties must be refreshed to match internal variables.
+  if(typeof window!=='undefined'){var _w=window;_w.timeHistory=timeHistory;_w.phaseHistory=phaseHistory;_w.a_current=a_current;_w.v_current=v_current;_w.tau=tau;}
+
+  // Warn when parameters are invalid but state has already been reset.
+  if(f_a0<=0){ console.warn('initSim: lapseF(a₀) ≤ 0 — parameters may place throat at/inside the event horizon. ' +
+    'State has been reset to tau=0; calibration (btnCalibrate) is required before Play.'); return; }
+
   // NOTE: calibrated stays false until calibrateAtA0() is called.
   // The Play button guards against running un-calibrated sims by calling
   // calibrateAtA0() first on the initial click (see main.js line 53).
