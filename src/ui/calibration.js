@@ -28,6 +28,10 @@ function readParams(){
   speedMultiplier=parseFloat(g('sliderSpeed')?.value||'1.0');
   autoStop=g('chkAutoStop')?.checked||false;
 
+  // Invalidate stale potential graph cache — ensures next drawPotentialGraph recomputes
+  // with fresh parameters. Called on every readParams() so idle slider changes also clear it.
+  _resetPotGraphCache();
+
   // Helper: safely parse slider value with fallback default (avoids NaN propagation)
   const safeParse = (id, def) => {
     const el = g(id);
@@ -256,6 +260,7 @@ function uiInitSim() {
   readParams();
   resetWarnCounters(); // ensure _clampingDetected and warn state start clean on each sim restart
   if (eosModel === 'barotropic') { initFPGrid(M_val, A_val, r0_val); }
+  _resetPotGraphCache(); // invalidate stale potential graph cache for new parameters
 }
 
 /** Initialize the simulation state with current parameters.

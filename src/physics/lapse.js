@@ -7,10 +7,9 @@
 var FD_FIRST_DERIV_H = 1e-7;
 var FD_SECOND_DERIV_H = 1e-5;
 
-// Rate-limit for out-of-bounds warnings during integration (~40/sec max when active).
+// Rate-limit for out-of-bounds warnings during integration.
 // Set DEBUG_GRID_INTERP=true to disable rate limiting for diagnostics.
 // Browser-compatible time source — falls back to Date.now() in Node.js.
-// Used by both the rate-limiter (_shouldWarn) and clamping-detection timer.
 var _perfNow = typeof performance !== 'undefined' && performance.now
     ? () => performance.now()
     : () => Date.now();
@@ -18,8 +17,8 @@ var _perfNow = typeof performance !== 'undefined' && performance.now
 var DEBUG_GRID_INTERP = typeof globalThis !== 'undefined' && globalThis.DEBUG_GRID_INTERP;
 var _warnCount = 0;
 var _warnLastTime = 0;
-var WARN_WINDOW_MS = 250; // ms — window length before counter resets
-var MAX_WARNINGS_PER_WINDOW = 10;
+var WARN_WINDOW_MS = 1000; // ms — window length before counter resets (was 250)
+var MAX_WARNINGS_PER_WINDOW = 3; // per window (~3/sec max, down from ~40/sec)
 function _shouldWarn() {
   if (DEBUG_GRID_INTERP) return true;  // No rate limiting in debug mode
   var now = _perfNow();
@@ -114,9 +113,14 @@ function hypergeom2F1(a, b, c, z) {
   // so very large |z| means r/r₀ >> 1 — the hypergeometric series fundamentally diverges
   // at or near its singularity regardless of iteration count.
   if (absZ > 1e6) {
-    console.warn('hypergeom2F1: extremely large |z|=' + absZ.toFixed(4) +
-      ' — falling back to asymptotic term only');
-    return Math.pow(1 - z, -b); // Asymptotic leading order
+    // Rate-limited warning: fire at most once per WARN_WINDOW_MS to avoid spamming while
+    // still providing visibility for debugging extreme-|z| issues outside the potential graph.
+    if (_shouldWarn()) {
+      console.warn('hypergeom2F1: extremely large |z|=' + absZ.toFixed(4) +
+        ' — falling back to asymptotic term only');
+    }
+
+    return Math.pow(1 - z, -b); // Asymptotic leading order; results beyond this threshold are untrusted.
   }
 
   var factor = Math.pow(1 - z, -b);
@@ -214,7 +218,18 @@ function initFPGrid(M, A, r0, N) {
       (M > MASS_THRESHOLD_FACTOR ? GRID_MAX_FACTOR_HIGH_MASS : GRID_MAX_FACTOR_LOW_MASS);
   var rMaxOffsetBased = rMin + RMAX_OFFSET_MULTIPLIER * M;
   var rMax = Math.max(rMaxAbs, rMaxOffsetBased, rMaxFactorBased);
+
+  // Cap rMax so that (r/r₀)^4 ≤ ~65k → |z| < hypergeom2F1 warning threshold.
+  // Hypergeometric series diverges at the singularity; beyond this bound values are unreliable.
+  var RMAX_HYPERGEOM_CAP = Math.max(M, r0 * 16);   // ≈ (r/r₀)⁴ ≤ ~65k
   if (!isFinite(rMax) || rMax <= rMin) { console.warn('initFPGrid: invalid grid bounds'); return false; }
+  if (rMax > RMAX_HYPERGEOM_CAP) {
+    // Grid was extending into the hypergeom2F1 divergence zone — truncate to safe radius.
+    console.warn('initFPGrid: truncating grid from ' + rMax.toFixed(3)
+      + ' → ' + RMAX_HYPERGEOM_CAP.toFixed(3) +
+      ' (hypergeom |z| cap for r₀=' + r0.toFixed(4));
+    rMax = RMAX_HYPERGEOM_CAP;
+  }
 
   // Compute grid spacing.
   var dr = (rMax - rMin) / (N - 1);

@@ -1,5 +1,11 @@
 function setupCanvas(id){const canvas=document.getElementById(id);const dpr=window.devicePixelRatio||1;function resize(){const rect=canvas.parentElement.getBoundingClientRect();canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;canvas.style.width=rect.width+'px';canvas.style.height=rect.height+'px';}resize();window.addEventListener('resize',resize);return{canvas,ctx:canvas.getContext('2d'),dpr};}
 const potObj=setupCanvas('potCanvas');const timeObj=setupCanvas('timeCanvas');const phaseObj=setupCanvas('phaseCanvasEl');
+// Parameter cache for potential graph — avoids recomputing lapseF(300×) every frame when params unchanged.
+// Caches {pts, vMin, vMax} keyed by a hash of (M_val|A_val|r0_val). Rebuilt only on param change or explicit redraw.
+var _potGraphCache = null;
+
+/** Reset the potential graph cache — call during simulation reset so stale data is invalidated. */
+function _resetPotGraphCache() { _potGraphCache = null; }
 
 function drawGraph(ctx,w,h,drawFn){
   ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,w,h);drawFn(ctx,w,h);ctx.restore();}
@@ -8,8 +14,23 @@ function drawPotentialGraph(){
   const{canvas,ctx}=potObj;const w=canvas.width/(window.devicePixelRatio||1),h=canvas.height/(window.devicePixelRatio||1);
   drawGraph(ctx,w,h,(c,cw,ch)=>{
     const pad={l:50,r:20,t:20,b:35},gw=cw-pad.l-pad.r,gh=ch-pad.t-pad.b;
-    const aMin=0.2,aMax=Math.max(a0_val*3,4),N=300,pts=[];let vMin=1e9,vMax=-1e9;
-    for(let i=0;i<=N;i++){const a=aMin+(aMax-aMin)*i/N;if(lapseF(a,M_val,A_val,r0_val)>0){const s0=calibrated?Math.sqrt(Math.abs(lapseF(a0_val,M_val,A_val,r0_val)))/(2*Math.PI*a0_val):0.1;const V=effPot(a,a0_val,s0,eosModel,eosParams);if(isFinite(V)){pts.push({a,V});vMin=Math.min(vMin,V);vMax=Math.max(vMax,V);}}}
+    // Cap plot range to physically meaningful region: r/r₀ ≤ 16 keeps |z| = (r/r₀)⁴ ≤ ~65k,
+    // well below the asymptotic threshold where hypergeom2F1 loses accuracy.
+    const aMin=0.2,aMax=Math.min(a0_val*3,Math.max(r0_val*16,a0_val)),N=300;
+    const _rangeCapped = (aMax < Math.max(a0_val*3, 4)); // visual indicator if range was truncated
+
+    var pts=[],vMin=1e9,vMax=-1e9; // default to empty graph data
+    // Check parameter cache — only recompute when M/A/r₀/eosModel actually changed (~95% of frames idle).
+    var _cacheKey = String(M_val.toFixed(8))+'|'+String(A_val.toFixed(8))+'|'+String(r0_val.toFixed(8))
+        + '|'+eosModel;
+    if (_potGraphCache && _potGraphCache.key === _cacheKey) {
+      pts=_potGraphCache.pts;vMin=_potGraphCache.vMin;vMax=_potGraphCache.vMax;
+    } else {
+      const s0=calibrated?Math.sqrt(Math.abs(lapseF(a0_val,M_val,A_val,r0_val)))/(2*Math.PI*a0_val):0.1;
+      for(let i=0;i<=N;i++){const a=aMin+(aMax-aMin)*i/N;if(lapseF(a,M_val,A_val,r0_val)>0){const V=effPot(a,a0_val,s0,eosModel,eosParams);if(isFinite(V)){pts.push({a,V});vMin=Math.min(vMin,V);vMax=Math.max(vMax,V);}}}   // close isFinite, lapseF>0, for-loop
+      _potGraphCache = {key:_cacheKey, pts:pts.slice(), vMin:vMin, vMax:vMax};
+    }  // end else/recompute block
+
     if(pts.length<2)return;
     const vRange=vMax-vMin||1;vMin-=vRange*0.1;vMax+=vRange*0.1;
     function toX(a){return pad.l+(a-aMin)/(aMax-aMin)*gw;}function toY(V){return pad.t+gh-(V-vMin)/(vMax-vMin)*gh;}
@@ -18,6 +39,15 @@ function drawPotentialGraph(){
     const Vpp=calibrated?computeVppOptimized():NaN;
     const isStable=isFinite(Vpp)&&Vpp>0;
     c.strokeStyle=isStable?'#40c060':'#e05050';c.lineWidth=2.5;c.beginPath();for(let i=0;i<pts.length;i++){const x=toX(pts[i].a),y=toY(pts[i].V);i===0?c.moveTo(x,y):c.lineTo(x,y);}c.stroke();
+    // Visual indicator: dashed line from plot edge to where range was capped (if truncated).
+    if (_rangeCapped) {
+      var oldAmax=Math.max(a0_val*3,4);
+      c.strokeStyle='#8a6020';c.lineWidth=1;c.setLineDash([5,3]);
+      c.beginPath();c.moveTo(toX(oldAmax),pad.t);c.lineTo(toX(oldAmax),ch-pad.b);c.stroke();
+      c.fillStyle='#8a6020';c.font='9px sans-serif';c.textAlign='center';
+      c.fillText('range capped',toX(Math.max((oldAmax+aMax)/2, aMin)),pad.t+10);
+      c.setLineDash([]); // reset
+    }
     if(calibrated){const a0x=toX(a0_val);c.strokeStyle='#fff';c.lineWidth=1;c.setLineDash([3,3]);c.beginPath();c.moveTo(a0x,pad.t);c.lineTo(a0x,ch-pad.b);c.stroke();c.setLineDash([]);c.fillStyle='#fff';c.beginPath();c.arc(a0x,toY(0),5,0,Math.PI*2);c.fill();const pertA=a0_val*(1+parseFloat(document.getElementById('sliderDeltaA').value)/100);const pertX=toX(pertA);c.strokeStyle='#ffaa40';c.lineWidth=2;c.beginPath();c.moveTo(a0x,toY(0));c.lineTo(pertX,toY(0));c.stroke();const dir=pertX>a0x?1:-1;c.beginPath();c.moveTo(pertX,toY(0));c.lineTo(pertX-dir*6,toY(0)-4);c.lineTo(pertX-dir*6,toY(0)+4);c.closePath();c.fillStyle='#ffaa40';c.fill();}
     c.fillStyle='#7070a0';c.font='11px sans-serif';c.textAlign='center';c.fillText('a (throat radius)',cw/2,ch-5);c.save();c.translate(12,ch/2);c.rotate(-Math.PI/2);c.fillText('V(a)',0,0);c.restore();
     if(calibrated&&!isNaN(Vpp)){c.fillStyle=Vpp>0?'#40c060':'#e05050';c.font='bold 12px sans-serif';c.textAlign='right';c.fillText(Vpp>0?'STABLE':'UNSTABLE',cw-pad.r,pad.t+14);}
@@ -51,5 +81,7 @@ function drawPhaseSpace(){
     c.fillStyle='#7070a0';c.font='11px sans-serif';c.textAlign='center';c.fillText('a',cw/2,ch-5);c.save();c.translate(12,ch/2);c.rotate(-Math.PI/2);c.fillText('δa/δτ',0,0);c.restore();
   });
 }
+
+export { _resetPotGraphCache };
 
 export { setupCanvas, drawGraph, drawPotentialGraph, drawTimeSeries, drawPhaseSpace };
